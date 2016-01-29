@@ -8,7 +8,6 @@ The following items are known to be not implemented:
     - launching of remote nodes
     - creating and managing log files
     - node respawning
-    - dump rosparam commands
     - launching of test nodes
     - the param 'binfile' attribute
     - the --child command line argument

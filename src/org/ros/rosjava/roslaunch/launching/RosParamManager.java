@@ -25,7 +25,7 @@ public class RosParamManager
 	//////////////////////////////////////////////
 	// get params functions
 	//
-	
+
 	/**
 	 * Get the List of RosParamTags defined within the tree of
 	 * launch files defined by the given List of LaunchFiles.
@@ -36,15 +36,15 @@ public class RosParamManager
 	public static List<RosParamTag> getRosParams(final List<LaunchFile> launchFiles)
 	{
 		List<RosParamTag> rosParams = new ArrayList<RosParamTag>();
-		
+
 		for (LaunchFile launchFile : launchFiles) {
 			List<RosParamTag> launchParams = getRosParams(launchFile);
 			rosParams.addAll(launchParams);
 		}
-		
+
 		return rosParams;
 	}
-	
+
 	/**
 	 * Get the List of RosParamTags defined within the given LaunchFile.
 	 *
@@ -59,12 +59,12 @@ public class RosParamManager
 		for (RosParamTag param : launchFile.getRosParams()) {
 			rosParams.add(param);
 		}
-		
+
 		// Add all rosparams defined by nodes
 		for (NodeTag node : launchFile.getNodes()) {
 			rosParams.addAll(node.getRosParams());
 		}
-		
+
 		// Add all rosparams defined by groups
 		for (GroupTag group : launchFile.getGroups())
 		{
@@ -74,7 +74,7 @@ public class RosParamManager
 				rosParams.addAll(groupParams);
 			}
 		}
-		
+
 		// Add all rosparams defined in includes
 		for (IncludeTag include : launchFile.getIncludes())
 		{
@@ -84,10 +84,10 @@ public class RosParamManager
 				rosParams.addAll(includeParams);
 			}
 		}
-		
+
 		return rosParams;
 	}
-	
+
 	/**
 	 * Get the Map of rosparam names to rosparam values for all RosParamTags
 	 * that load a parameter for the given launch file tree.
@@ -98,14 +98,14 @@ public class RosParamManager
 	public static Map<String, String> getLoadRosParamsMap(final List<LaunchFile> launchFiles)
 	{
 		Map<String, String> loadParams = new HashMap<String, String>();
-		
+
 		for (LaunchFile launchFile : launchFiles) {
 			getLoadRosParamsMap(launchFile, loadParams);
 		}
-		
+
 		return loadParams;
 	}
-	
+
 	/**
 	 * Get the Map of rosparam names to rosparam values for all RosParamTags
 	 * that load a parameter for the given LaunchFile.
@@ -124,7 +124,7 @@ public class RosParamManager
 				getLoadRosParam(param, loadParams);
 			}
 		}
-		
+
 		// Add all rosparams defined by nodes
 		for (NodeTag node : launchFile.getNodes())
 		{
@@ -135,7 +135,7 @@ public class RosParamManager
 				}
 			}
 		}
-		
+
 		// Add all rosparams defined by groups
 		for (GroupTag group : launchFile.getGroups())
 		{
@@ -143,7 +143,7 @@ public class RosParamManager
 				getLoadRosParamsMap(group.getLaunchFile(), loadParams);
 			}
 		}
-		
+
 		// Add all rosparams defined in includes
 		for (IncludeTag include : launchFile.getIncludes())
 		{
@@ -167,7 +167,7 @@ public class RosParamManager
 		///// must be a load command
 		String resolved = rosParam.getResolvedName();
 		Object yamlObj = rosParam.getYamlObject();
-		
+
 		String content = rosParam.getYamlContent();
 
 		if (resolved.length() > 0 && content.length() > 0)
@@ -188,7 +188,7 @@ public class RosParamManager
 			}
 		}
 	}
-	
+
 	/**
 	 * Get a Map of rosparam name value pairs for all the parameters
 	 * that will be loaded by a RosParamTag with a dictionary (i.e., Map)
@@ -208,12 +208,12 @@ public class RosParamManager
 		{
 			Object value = map.get(key);
 			String resolvedKey = RosUtil.joinNamespace(namespace, key.toString());
-			
+
 			if (ObjectToXml.isMap(value))
 			{
 				// Recurse to handle this dictionary
 				getLoadRosParamDict(
-					resolvedKey, (Map<String, Object>)value, loadParams);				
+					resolvedKey, (Map<String, Object>)value, loadParams);
 			}
 			else
 			{
@@ -222,12 +222,12 @@ public class RosParamManager
 			}
 		}
 	}
-	
-	
+
+
 	//////////////////////////////////////////////
 	// print functions
 	//
-	
+
 	/**
 	 * Print each of the given rosparam name value pairs to the screen.
 	 *
@@ -243,19 +243,19 @@ public class RosParamManager
 			if (value.length() > 20) {
 				value = value.substring(0, 20) + "...";
 			}
-			
+
 			// Remove carriage returns and new lines for display purposes
 			value = value.replace("\r", "").replace("\n", "");
-		
+
 			System.out.println(" * " + name + ": " + value);
 		}
 	}
-	
-	
+
+
 	//////////////////////////////////////////////
 	// set functions
 	//
-	
+
 	/**
 	 * Send a request to the ROS master server to set all of
 	 * the rosparams defined in the given List of RosParamTags.
@@ -274,7 +274,7 @@ public class RosParamManager
 			}
 		}
 	}
-	
+
 	/**
 	 * Send a request to the ROS master server to set the value of
 	 * a single RosParamTag.
@@ -288,19 +288,19 @@ public class RosParamManager
 		///// must be a load command
 		String resolved = rosparam.getResolvedName();
 		Object yamlObj = rosparam.getYamlObject();
-		
+
 		if (resolved.length() > 0 && yamlObj != null)
-		{		
+		{
 			RosXmlRpcClient client = new RosXmlRpcClient(uri);
-			client.setYamlParam(rosparam);			
+			client.setYamlParam(rosparam);
 		}
 	}
-	
-	
+
+
 	//////////////////////////////////////////////
 	// rosparam delete functions
 	//
-	
+
 	/**
 	 * Send a request to the ROS master server to delete all
 	 * of the RosParamTags defined in the given List.
@@ -330,11 +330,11 @@ public class RosParamManager
 	private static void deleteRosParam(final RosParamTag rosparam, final String uri)
 	{
 		String param = rosparam.getResolvedName();
-		
+
 		System.out.println("running rosparam delete " + param);
-		
+
 		RosXmlRpcClient client = new RosXmlRpcClient(uri);
-		
+
 		try
 		{
 			// Handle the generic delete differently than
@@ -350,12 +350,12 @@ public class RosParamManager
 			System.err.println(e.getMessage());
 		}
 	}
-	
-	
+
+
 	//////////////////////////////////////////////
 	// rosparam dump functions
 	//
-	
+
 	/**
 	 * Run all of the 'dump' RosParamTags defined in the given
 	 * List of RosParamTags.
@@ -367,8 +367,53 @@ public class RosParamManager
 			final List<RosParamTag> rosParams,
 			final String uri)
 	{
-		// TODO: finish this
-		System.err.println(
-			"WARNING: rosparam dump commands are not yet implemented!");
+		for (RosParamTag rosParam : rosParams) {
+			dumpParam(rosParam);
+		}
+	}
+
+	/**
+	 * Run a single 'dump' rosparam command.
+	 *
+	 * @param rosParam the RosParamTag
+	 */
+	public static void dumpParam(final RosParamTag rosParam)
+	{
+		String file = rosParam.getFile();
+
+		// Make sure the file exists
+		if (file != null && file.length() > 0)
+		{
+			List<String> fullCommand = new ArrayList<String>();
+
+			String resolvedName = rosParam.getResolvedName();
+
+			// Create the command to dump the rosparam to the desired file
+			fullCommand.add("rosparam");
+			fullCommand.add("dump");
+			fullCommand.add(file);
+			fullCommand.add(resolvedName);
+
+			// Convert the list of command args to an array
+			String[] command = new String[fullCommand.size()];
+			fullCommand.toArray(command);
+
+			System.out.println("running rosparam dump " + file + " " + resolvedName);
+
+			Process proc;
+			try {
+				proc = Runtime.getRuntime().exec(command);
+
+				// Wait for the process to complete -- should be fast
+				proc.waitFor();
+			}
+			catch (Exception e)
+			{
+				String msg = "ERROR: while running: rosparam dump " + file + " " + resolvedName;
+				msg += "\n" + e.getMessage();
+
+				System.err.println(msg);
+			}
+		}
 	}
 }

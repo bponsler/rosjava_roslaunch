@@ -16,7 +16,6 @@ import org.ros.rosjava.roslaunch.util.Util;
 
 // TODO: handle logging, check log file size
 // TODO: respawn for nodes is not handled
-// TODO: rosparam dump is not implemented
 // TODO: test nodes are not implemented
 // TODO: PRINT OUT ERROR (STOP) ON ARG BEING UNUSED IN INCLUDE
 //       need to know what subs args get resolved...
