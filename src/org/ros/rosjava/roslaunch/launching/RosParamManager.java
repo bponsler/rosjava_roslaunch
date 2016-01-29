@@ -367,8 +367,11 @@ public class RosParamManager
 			final List<RosParamTag> rosParams,
 			final String uri)
 	{
-		for (RosParamTag rosParam : rosParams) {
-			dumpParam(rosParam);
+		for (RosParamTag rosParam : rosParams)
+		{
+			if (rosParam.isDumpCommand()) {
+				dumpParam(rosParam);
+			}
 		}
 	}
 
