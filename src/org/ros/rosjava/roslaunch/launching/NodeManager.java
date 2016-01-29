@@ -1,7 +1,7 @@
 package org.ros.rosjava.roslaunch.launching;
 
 import java.io.File;
-import java.io.IOException; 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -24,7 +24,7 @@ public class NodeManager
 {
 	/** A counter for the number of nodes launched. */
 	private static int LAUNCHED_NODES_COUNTER = 1;
-	
+
 	/**
 	 * Get the List of NodeTags defined in the tree defined by
 	 * the given List of LaunchFiles.
@@ -35,17 +35,17 @@ public class NodeManager
 	public static List<NodeTag> getNodes(final List<LaunchFile> launchFiles)
 	{
 		List<NodeTag> nodes = new ArrayList<NodeTag>();
-		
+
 		for (LaunchFile launchFile : launchFiles) {
 			List<NodeTag> launchNodes = getNodes(launchFile);
 			nodes.addAll(launchNodes);
 		}
-		
+
 		return nodes;
 	}
-	
+
 	/**
-	 * Get the List of NodeTags defined in the given LaunchFile.
+	 * Get the List of enabled NodeTags defined in the given LaunchFile.
 	 *
 	 * @param launchFile the LaunchFile
 	 * @return the List of NodeTags defined in the LaunchFile
@@ -53,10 +53,15 @@ public class NodeManager
 	public static List<NodeTag> getNodes(final LaunchFile launchFile)
 	{
 		List<NodeTag> nodes = new ArrayList<NodeTag>();
-		
+
 		// Add all nodes
-		nodes.addAll(launchFile.getNodes());
-		
+		for (NodeTag node : launchFile.getNodes())
+		{
+			if (node.isEnabled()) {
+				nodes.add(node);
+			}
+		}
+
 		// Add nodes from all groups
 		for (GroupTag group : launchFile.getGroups())
 		{
@@ -66,7 +71,7 @@ public class NodeManager
 				nodes.addAll(groupNodes);
 			}
 		}
-		
+
 		// Add nodes from all includes
 		for (IncludeTag include : launchFile.getIncludes())
 		{
@@ -76,10 +81,10 @@ public class NodeManager
 				nodes.addAll(includeNodes);
 			}
 		}
-		
+
 		return nodes;
 	}
-	
+
 	/**
 	 * Print each of the given NodeTags to the screen.
 	 *
@@ -90,11 +95,11 @@ public class NodeManager
 		// Create a map from namespace to the list of nodes contained
 		// within that namespace
 		Map<String, List<NodeTag> > namespaceMap = getNodeNamespaceMap(nodes);
-		
+
 		// Print the map of namespaces to list of nodes in the namespace
-		printNamespaceMap(namespaceMap);		
+		printNamespaceMap(namespaceMap);
 	}
-	
+
 	/**
 	 * Get a Map from namespace to the List of NodeTags that are
 	 * defined for that namespace.
@@ -106,32 +111,32 @@ public class NodeManager
 			final List<NodeTag> nodes)
 	{
 		Map<String, List<NodeTag> > namespaceMap = new HashMap<String, List<NodeTag> >();
-		
+
 		for (NodeTag node : nodes)
 		{
 			String namespace = node.getNamespace();
-			
+
 			// Convert relative namespaces to global
 			if (!namespace.startsWith("/")) {
 				namespace = "/" + namespace;
 			}
-			
+
 			// Grab the current list of nodes for this namespace, and
 			// handle the case where there aren't any yet
 			List<NodeTag> namespaceNodes = namespaceMap.get(namespace);
 			if (namespaceNodes == null) {
 				namespaceNodes = new ArrayList<NodeTag>();
 			}
-			
+
 			// Add the node to the namespace, and store the
 			// new list in the map
 			namespaceNodes.add(node);
 			namespaceMap.put(namespace, namespaceNodes);
 		}
-		
+
 		return namespaceMap;
 	}
-	
+
 	/**
 	 * Print each of the NodeTags defined for a each known namespace
 	 * to the screen.
@@ -143,20 +148,20 @@ public class NodeManager
 		for (String namespace : namespaceMap.keySet())
 		{
 			List<NodeTag> nodes = namespaceMap.get(namespace);
-			
+
 			System.out.println("  " + namespace);
-			
+
 			for (NodeTag node: nodes)
 			{
 				// Label the node name, package, and type
 				String label =
 					node.getName() + " (" + node.getPackage() +	"/" + node.getType() + ")";
-				
+
 				System.out.println("    " + label);
 			}
 		}
 	}
-	
+
 	/**
 	 * Launch all of the given NodeTags.
 	 *
@@ -173,7 +178,7 @@ public class NodeManager
 			final boolean isCore)
 	{
 		List<RosProcess> processes = new ArrayList<RosProcess>();
-		
+
 		// Launch all of the nodes contained in the list
 		for (NodeTag node : nodes)
 		{
@@ -188,7 +193,7 @@ public class NodeManager
 
 		return processes;
 	}
-	
+
 	/**
 	 * Launch a single nodeTag.
 	 *
@@ -214,32 +219,32 @@ public class NodeManager
 				"Failed to start node: " + node.getResolvedName() + ": " + e.getMessage());
 			return null;
 		}
-		
+
 		// Set the node to respawn if it is configured to do so
 		if (node.shouldRespawn()) {
 			rosProc.setRespawn(node.getRespawnDelay());
 		}
-		
+
 		if (!isCore) {
 			// Grab the PID of the running process
 			int pid = rosProc.getPid();
-			
+
 			// Add a message indicating what PID the process has
 			// if we were able to get the PID
 			String pidMsg = "";
 			if (pid != -1) {
 				pidMsg = "with pid [" + pid + "]";
 			}
-					
+
 			System.out.println("process[" + rosProc.getName() + "]: started " + pidMsg);
 		}
 		else {
 			System.out.println("started core service [" + rosProc.getName() + "]");
 		}
-		
+
 		return rosProc;
 	}
-	
+
 	/**
 	 * Get the array of command line arguments to pass to a
 	 * node executable
@@ -252,15 +257,15 @@ public class NodeManager
 	public static String[] getNodeCommandLine(
 			final NodeTag node,
 			final boolean addNamespace)
-	{	
+	{
 		String name = node.getName();
-		
+
 		// Look up the path to the node executable
 		File executable = node.getExecutable();
-		
+
 		// Create the list of arguments passed to the launch the node
 		List<String> fullCommand = new ArrayList<String>();
-				
+
 		if (addNamespace)
 		{
 			// Get the environment variables for this node
@@ -276,7 +281,7 @@ public class NodeManager
 				}
 			}
 		}
-		
+
 		// If the node has a launch prefix add it here
 		String launchPrefix = node.getLaunchPrefix();
 		if (launchPrefix != null && launchPrefix.length() > 0)
@@ -286,10 +291,10 @@ public class NodeManager
 				fullCommand.add(arg);
 			}
 		}
-		
+
 		// Path to the node executable
 		fullCommand.add(executable.getAbsolutePath());
-		
+
 		// Add all topic remappings to the command
 		Map<String, String> remappings = node.getRemappings();
 		for (String source : remappings.keySet())
@@ -300,7 +305,7 @@ public class NodeManager
 
 		// Add the name of the node
 		fullCommand.add("__name:=" + name);
-		
+
 		// Add all node args to the command
 		for (String arg : node.getArgs()) {
 			fullCommand.add(arg);
@@ -309,10 +314,10 @@ public class NodeManager
 		// Create the array to launch the command
 		String[] command = new String[fullCommand.size()];
 		fullCommand.toArray(command);
-		
+
 		return command;
 	}
-	
+
 	/**
 	 * Create and run the executable for a node.
 	 *
@@ -332,26 +337,26 @@ public class NodeManager
 
 		// Get the environment variables for this node
 		String[] envp = getNodeEnvironment(node, masterUri);
-		
+
 		// Handle the cwd attribute for the node
 		File workingDir = node.getCwd();
-		
+
 		// Launch the node with its environment and the working directory
 		// NOTE: it is fine if workingDir, or envp, are null here it just
 		//       will launch the process with whatever the default values are
 		Process proc = Runtime.getRuntime().exec(command, envp, workingDir);
-		
+
 		// Add a counter to the name to avoid collisions between names
 		String processName = node.getResolvedName() + "-" + LAUNCHED_NODES_COUNTER++;
-		
+
 		boolean printStreams = node.isScreenOutput();
-		
+
 		// If the screen argument is active, then the output of all
 		// nodes is logged to the screen
 		if (parsedArgs.hasScreen()) {
 			printStreams = true;
 		}
-		
+
 		return new RosProcess(
 				processName,
 				proc,
@@ -359,12 +364,12 @@ public class NodeManager
 				node.isRequired(),
 				printStreams);
 	}
-	
+
 	/**
 	 * Get the array of environment variables for a NodeTag. Each
 	 * entry in the array is a single environment variable in the
 	 * following format:
-	 * 
+	 *
 	 *     VAR_NAME=VALUE
 	 *
 	 * @param node the NodeTag
@@ -374,11 +379,11 @@ public class NodeManager
 	private static String[] getNodeEnvironment(final NodeTag node, final String masterUri)
 	{
 		// Create a copy of the environment variables
-		Map<String, String> env = new HashMap<String, String>(System.getenv());	
+		Map<String, String> env = new HashMap<String, String>(System.getenv());
 
 		// Set the URI to the maser node
 		env.put(EnvVar.ROS_MASTER_URI.name(), masterUri);
-		
+
 		// Remove the ROS namespace if one exists
 		if (env.containsKey(EnvVar.ROS_NAMESPACE.name())) {
 			env.remove(EnvVar.ROS_NAMESPACE.name());
@@ -392,68 +397,71 @@ public class NodeManager
 			if (namespace.charAt(namespace.length() - 1) == '/') {
 				namespace = namespace.substring(0, namespace.length() - 1);
 			}
-			
+
 			// Add the namespace to the environment, if there is one
 			if (namespace.length() > 0) {
 				env.put(EnvVar.ROS_NAMESPACE.name(), namespace);
 			}
 		}
-		
+
 		// Add all of the node's environment variables to the environment
 		Map<String, String> nodeEnv = node.getEnv();
 		for (String envName : nodeEnv.keySet()) {
 			env.put(envName, nodeEnv.get(envName));
 		}
-		
+
 		// Create the array of strings for the environment variables
 		String[] envp = new String[env.size()];
 		int index = 0;
 		for (String key : env.keySet()) {
 			envp[index++] = key + "=" + env.get(key);
 		}
-		
+
 		return envp;
 	}
-	
+
 	/**
 	 * Ensure that no two nodes are defined with the same name.
-	 * 
+	 *
 	 * @param launchFiles is the List of LaunchFiles
 	 * @throws RuntimeException if two nodes have the same name
 	 */
 	public static void checkForDuplicateNodeNames(final List<LaunchFile> launchFiles)
 	{
 		List<NodeTag> nodes = NodeManager.getNodes(launchFiles);
-		
+
 		// Add each node to the map of nodes, and if it already exists
 		// then there are two nodes with duplicate names
 		Map<String, String> allNodes = new HashMap<String, String>();
 		for (NodeTag node : nodes)
 		{
-			String name = node.getResolvedName();
-			String filename = node.getFilename();
-			
-			// If the name is already contained, then we found a duplicate
-			if (allNodes.containsKey(name))
+			if (node.isEnabled())
 			{
-				String otherFilename = allNodes.get(name);
+				String name = node.getResolvedName();
+				String filename = node.getFilename();
 
-				// Generate the error message
-				String msg = "roslaunch file contains multiple nodes named [" + name + "].\n";
-				msg += "Please check all <node> 'name' attributes to make sure they are unique.\n";
-				msg += "Also check that $(anon id) use different ids.\n";
+				// If the name is already contained, then we found a duplicate
+				if (allNodes.containsKey(name))
+				{
+					String otherFilename = allNodes.get(name);
 
-				// Add info about the files containing the nodes
-				if (filename.compareTo(otherFilename) != 0) {
-					msg += "The nodes were found in [" + filename + "] and [" + otherFilename + "]";
+					// Generate the error message
+					String msg = "roslaunch file contains multiple nodes named [" + name + "].\n";
+					msg += "Please check all <node> 'name' attributes to make sure they are unique.\n";
+					msg += "Also check that $(anon id) use different ids.\n";
+
+					// Add info about the files containing the nodes
+					if (filename.compareTo(otherFilename) != 0) {
+						msg += "The nodes were found in [" + filename + "] and [" + otherFilename + "]";
+					}
+					else {
+						msg += "Both nodes were found in [" + filename + "]";
+					}
+
+					throw new RuntimeException(msg);
 				}
-				else {
-					msg += "Both nodes were found in [" + filename + "]";
-				}
-				
-				throw new RuntimeException(msg);
+				allNodes.put(name, filename);
 			}
-			allNodes.put(name, filename);
 		}
 	}
 }
