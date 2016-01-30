@@ -185,6 +185,8 @@ public class RosLaunchRunner
 			"-w", String.valueOf(m_numWorkers)
 		};
 
+		PrintLog.info("auto-starting new master");
+
 		Process master = null;
 		try {
 			master = Runtime.getRuntime().exec(command);

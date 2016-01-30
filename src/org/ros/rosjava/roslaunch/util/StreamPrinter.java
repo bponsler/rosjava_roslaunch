@@ -22,10 +22,10 @@ public class StreamPrinter extends Thread
      * Constructor
      *
      * Create a StreamPrinter object.
-     * 
+     *
      * @param is is the input stream to print
      */
-    public StreamPrinter(InputStream is) 
+    public StreamPrinter(InputStream is)
     {
         m_inputStream = is;
         m_readStream = false;
@@ -38,7 +38,7 @@ public class StreamPrinter extends Thread
     {
     	m_readStream = false;
     }
-    
+
     @Override
     public void run()
     {
@@ -53,7 +53,7 @@ public class StreamPrinter extends Thread
             }
         }
         catch (IOException ioe) {
-            ioe.printStackTrace();
+            // Don't print errors here
         }
     }
 }

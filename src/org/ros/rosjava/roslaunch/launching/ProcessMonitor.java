@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Semaphore;
 
 import org.ros.rosjava.roslaunch.logging.PrintLog;
 
@@ -26,6 +27,9 @@ public class ProcessMonitor
 	/** True if the process monitor has been shutdown, or detected that it needs to shutdown. */
 	private boolean m_isShutdown;
 
+	/** Semaphore for locking protecting process monitor data. */
+	private Semaphore m_semaphore;
+
 	/**
 	 * Constructor
 	 *
@@ -34,6 +38,7 @@ public class ProcessMonitor
 	public ProcessMonitor()
 	{
 		m_isShutdown = false;
+		m_semaphore = new Semaphore(1);
 		m_processes = new ArrayList<RosProcess>();
 		m_deadProcesses = new ArrayList<RosProcess>();
 		m_respawningProcesses = new HashMap<RosProcess, Long>();
@@ -75,124 +80,20 @@ public class ProcessMonitor
 	 */
 	public void monitor()
 	{
-		// Only monitor processes if we have not been shut down
-		if (!m_isShutdown)
-		{
-			// Map dead processes to their time of death
-			Map<RosProcess, Long> diedProcesses = new HashMap<RosProcess, Long>();
+		// Do not monitor processes when we cannot acquire the lock
+		if (!m_semaphore.tryAcquire()) {
+			return;
+		}
 
-			// Monitor all known processes
-			for (RosProcess proc : m_processes)
-			{
-				// Ignore fully dead processes, and still running processes
-				if (!m_deadProcesses.contains(proc) && !proc.isRunning())
-				{
-					Long timeOfDeath = System.nanoTime();
-					String exitCodeDesc = proc.getExitCodeDescription();  // Should be non-null
+		// Attempt to monitor processes, and catch any errors
+		try {
+			monitorProcesses();
+		}
+		catch (Exception e) {
+			e.printStackTrace();  // TODO: just for test
+		}
 
-					// Determine what type of node was lost
-					if (proc.isRequired())
-					{
-						//// Lost a required node!
-
-						// Create a horizontal bar for printing
-						String bar = "";
-						for (int i = 0; i < 80; ++i) bar += "=";
-
-						PrintLog.error(bar);
-						PrintLog.error("REQUIRED process [" + proc.getName() + "] has died!");
-						PrintLog.error(exitCodeDesc);
-						PrintLog.error("Initiating shutdown!");
-						PrintLog.error(bar);
-
-						// Stop all other processes
-						this.shutdown();
-						return;
-					}
-					else
-					{
-						// Ignore processes that are being respawned
-						if (!m_respawningProcesses.containsKey(proc))
-						{
-							//// Lost a non-required node
-							PrintLog.error("[" + proc.getName() + "]: " + exitCodeDesc);
-
-							diedProcesses.put(proc, timeOfDeath);
-						}
-					}
-				}
-			}  // end of loop over processes
-
-			// Handle all of the non-required processes that
-			// have died during this cycle
-			for (RosProcess deadProc : diedProcesses.keySet())
-			{
-				//Long timeOfDeath = diedProcesses.get(deadProc);
-
-				// Determine if this node should be respawned
-				if (deadProc.shouldRespawn())
-				{
-					//// Node should be respawned
-					//m_respawningProcesses.put(deadProc, timeOfDeath);
-
-					// TODO: finish implementing respawning of nodes
-					PrintLog.error(
-						"WARNING: respawning nodes is not yet implemented!");
-					deadProc.destroy();
-					m_deadProcesses.add(deadProc);
-				}
-				else
-				{
-					//// Node should not be respawned
-
-					// TODO: unregister the node
-
-					// Stop the process
-					deadProc.destroy();
-
-					// Save process to fully dead list
-					m_deadProcesses.add(deadProc);
-				}
-			}  // end of loop over dead processes
-
-			// Check all respawning processes
-			Map<RosProcess, Long> stillRespawning = new HashMap<RosProcess, Long>();
-			for (RosProcess respawn : m_respawningProcesses.keySet())
-			{
-				Long timeOfDeath = m_respawningProcesses.get(respawn);
-
-				// Determine number of nanoseconds, and seconds since the process died
-				Long nanosSinceDeath = System.nanoTime() - timeOfDeath;
-				double secondsSinceDeath = nanosSinceDeath * 1e-9;
-
-				// Determine if enough time has elapsed since this process
-				// has died so that it can be restarted
-				float respawnDelaySeconds = respawn.getRespawnDelaySeconds();
-				if (secondsSinceDeath >= respawnDelaySeconds)
-				{
-					PrintLog.info("[" + respawn.getName() + "] restarting process");
-
-					// Restart the process
-					try {
-						respawn.restart();
-					}
-					catch (Exception e)
-					{
-						PrintLog.error(
-							"Restart of process [" + respawn.getName() + "] failed: " + e.getMessage());
-					}
-				}
-				else {
-					// The process needs more time before it can be restarted
-					stillRespawning.put(respawn, timeOfDeath);
-				}
-			}
-
-			// Keep the list of processes that are still respawning around
-			// for the next cycle
-			m_respawningProcesses = stillRespawning;
-
-		}  // end of if !shutdown
+		m_semaphore.release();  // Release before leaving
 	}
 
 	/**
@@ -200,31 +101,199 @@ public class ProcessMonitor
 	 */
 	public void shutdown()
 	{
-		// TODO: mutex between stop and monitor?
+		// Acquire the lock -- no matter how long it takes
+		while (!m_semaphore.tryAcquire()) {
+			try { Thread.sleep(100); } catch (Exception e) { /* Ignore sleep errors */ }
+		}
 
-		// Kill all running processes
+		// Only shutdown once
+		if (!m_isShutdown)
+		{
+			// Kill all running processes
+			for (RosProcess proc : m_processes)
+			{
+				if (proc.isRunning()) {
+					PrintLog.info("[" + proc.getName() + "] killing on exit");
+					proc.destroy();
+				}
+			}
+
+			// Wait for all processes to stop
+			for (RosProcess proc : m_processes)
+			{
+				try {
+					proc.waitFor();
+				} catch (InterruptedException e) {
+					PrintLog.error("Error while waiting for process to stop: " + e.getMessage());
+				}
+			}
+
+			m_isShutdown = true;
+
+			PrintLog.info("shutting down processing monitor...");
+			PrintLog.info("... shutting down processing monitor complete");
+			PrintLog.bold("done");
+		}
+
+		m_semaphore.release();  // Release the lock
+	}
+
+	/**
+	 * Helper function to monitor all processes
+	 */
+	private void monitorProcesses()
+	{
+		// NOTE: It is assumed that the thread lock has been acquired
+		//        prior to this function being called
+
+		// Only monitor processes if we have not been shut down
+		if (!m_isShutdown)
+		{
+			// Map dead processes to their time of death
+			Map<RosProcess, Long> diedProcesses = findDiedProcesses();
+			if (diedProcesses == null || m_isShutdown) {
+				return;  // Likely lost a required process
+			}
+
+			// Handle all of the non-required processes that
+			// have died during this cycle
+			for (RosProcess deadProc : diedProcesses.keySet()) {
+				handleNonReqDeadProcess(deadProc);
+			}
+
+			// Handle all respawning processes
+			handleRespawningProcesses();
+		}
+	}
+
+	/**
+	 * Find all of the processes that have died since the last check.
+	 *
+	 * @return the Map of RosProcesses to their time of death (in nano time)
+	 */
+	public Map<RosProcess, Long> findDiedProcesses()
+	{
+		// Map dead processes to their time of death
+		Map<RosProcess, Long> diedProcesses = new HashMap<RosProcess, Long>();
+
+		// Monitor all known processes
 		for (RosProcess proc : m_processes)
 		{
-			if (proc.isRunning()) {
-				PrintLog.info("[" + proc.getName() + "] killing on exit");
-				proc.destroy();
+			// Ignore fully dead processes, and still running processes
+			if (!m_deadProcesses.contains(proc) && !proc.isRunning())
+			{
+				Long timeOfDeath = System.nanoTime();
+				String exitCodeDesc = proc.getExitCodeDescription();  // Should be non-null
+
+				// Determine what type of node was lost
+				if (proc.isRequired())
+				{
+					//// Lost a required node!
+
+					// Create a horizontal bar for printing
+					String bar = "";
+					for (int i = 0; i < 80; ++i) bar += "=";
+
+					PrintLog.error(bar);
+					PrintLog.error("REQUIRED process [" + proc.getName() + "] has died!");
+					PrintLog.error(exitCodeDesc);
+					PrintLog.error("Initiating shutdown!");
+					PrintLog.error(bar);
+
+					// Stop all other processes
+					m_semaphore.release();  // Release before entering shutdown
+					this.shutdown();
+					return null;
+				}
+				else
+				{
+					// Ignore processes that are being respawned
+					if (!m_respawningProcesses.containsKey(proc))
+					{
+						//// Lost a non-required node
+						PrintLog.error("[" + proc.getName() + "]: " + exitCodeDesc);
+
+						diedProcesses.put(proc, timeOfDeath);
+					}
+				}
+			}
+		}  // end of loop over processes
+
+		return diedProcesses;
+	}
+
+	/**
+	 * Handle the death of a non-required process.
+	 *
+	 * @param deadProc the non-required process that died
+	 */
+	public void handleNonReqDeadProcess(final RosProcess deadProc)
+	{
+		//Long timeOfDeath = diedProcesses.get(deadProc);
+
+		// Determine if this node should be respawned
+		if (deadProc.shouldRespawn())
+		{
+			//// Node should be respawned
+			//m_respawningProcesses.put(deadProc, timeOfDeath);
+
+			// TODO: finish implementing respawning of nodes
+			PrintLog.error(
+				"WARNING: respawning nodes is not yet implemented!");
+			deadProc.destroy();
+			m_deadProcesses.add(deadProc);
+		}
+		else
+		{
+			//// Node should not be respawned
+
+			// TODO: unregister the node
+
+			// Stop the process
+			deadProc.destroy();
+
+			// Save process to fully dead list
+			m_deadProcesses.add(deadProc);
+		}
+	}
+
+	private void handleRespawningProcesses()
+	{
+		// Check all respawning processes
+		Map<RosProcess, Long> stillRespawning = new HashMap<RosProcess, Long>();
+		for (RosProcess respawn : m_respawningProcesses.keySet())
+		{
+			Long timeOfDeath = m_respawningProcesses.get(respawn);
+
+			// Determine number of nanoseconds, and seconds since the process died
+			Long nanosSinceDeath = System.nanoTime() - timeOfDeath;
+			double secondsSinceDeath = nanosSinceDeath * 1e-9;
+
+			// Determine if enough time has elapsed since this process
+			// has died so that it can be restarted
+			float respawnDelaySeconds = respawn.getRespawnDelaySeconds();
+			if (secondsSinceDeath >= respawnDelaySeconds)
+			{
+				PrintLog.info("[" + respawn.getName() + "] restarting process");
+
+				// Restart the process
+				try {
+					respawn.restart();
+				}
+				catch (Exception e)
+				{
+					PrintLog.error(
+						"Restart of process [" + respawn.getName() + "] failed: " + e.getMessage());
+				}
+			}
+			else {
+				// The process needs more time before it can be restarted
+				stillRespawning.put(respawn, timeOfDeath);
 			}
 		}
 
-		// Wait for all processes to stop
-		for (RosProcess proc : m_processes)
-		{
-			try {
-				proc.waitFor();
-			} catch (InterruptedException e) {
-				PrintLog.error("Error while waiting for process to stop: " + e.getMessage());
-			}
-		}
-
-		m_isShutdown = true;
-
-		PrintLog.info("shutting down processing monitor...");
-		PrintLog.info("... shutting down processing monitor complete");
-		PrintLog.bold("done");
+		// Keep the list of processes that are still respawning around
+		// for the next cycle
+		m_respawningProcesses = stillRespawning;
 	}
 }
