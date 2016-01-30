@@ -15,20 +15,17 @@ public class ObjectToXml
 {
 	/**
 	 * Convert the given Java Object into proper XML.
-	 * 
+	 *
 	 * This function can convert the following Java Objects to XML:
 	 *     - Booleans
 	 *     - Integer
 	 *     - Double
 	 *     - String
-	 *     - List
-	 * 
-	 * This function does not handle converting Map objects to
-	 * XML as those should be handled elsewhere.
-	 * 
+	 *     - List<Object>
+	 *     - Map<String, Object>
+	 *
 	 * @param obj the object to convert to XML
 	 * @return the XML representing the object
-	 * @throws a RuntimeException if this is passed a Map object
 	 * @throws a RuntimeException if this is an unknown object type
 	 */
 	public static String objectToXml(final Object obj)
@@ -58,30 +55,50 @@ public class ObjectToXml
 		{
 			@SuppressWarnings("unchecked")
 			List<Object> list = (List<Object>)obj;
-			
+
 			String xml = "<array><data>";
-			
+
 			// Convert each time into a list
 			for (Object item : list) {
 				xml += objectToXml(item);
 			}
-			
+
 			xml += "</data></array>";
-			
+
 			return xml;
 		}
-		else if (isMap(obj)){	
-			throw new RuntimeException("Maps are not supported");
-		}
-		else
+		else if (isMap(obj))
 		{
+			@SuppressWarnings("unchecked")
+			Map<String, Object> map = (Map<String, Object>)obj;
+
+			String xml = "<value><struct>";
+
+			for (String key : map.keySet())
+			{
+				xml += "<member>";
+
+				// Add XML for the key
+				xml += "<name>" + key + "</name>";
+
+				// Add XML for the value
+				xml += objectToXml(map.get(key));
+
+				xml += "</member>";
+			}
+
+			xml += "</struct></value>";
+
+			return xml;
+		}
+		else {
 			throw new RuntimeException("Invalid type of YAML object!");
 		}
 	}
-	
+
 	/**
 	 * Determine if the given Object is a Boolean.
-	 * 
+	 *
 	 * @param obj is the object
 	 * @return true if this object is a Boolean
 	 */
@@ -97,10 +114,10 @@ public class ObjectToXml
 			return false;  // Not a boolean
 		}
 	}
-	
+
 	/**
 	 * Determine if the given Object is an Integer.
-	 * 
+	 *
 	 * @param obj is the object
 	 * @return true if this object is an Integer
 	 */
@@ -116,10 +133,10 @@ public class ObjectToXml
 			return false;  // Not an integer
 		}
 	}
-	
+
 	/**
 	 * Determine if the given Object is a Double.
-	 * 
+	 *
 	 * @param obj is the object
 	 * @return true if this object is a Double
 	 */
@@ -135,10 +152,10 @@ public class ObjectToXml
 			return false;  // Not a double
 		}
 	}
-	
+
 	/**
 	 * Determine if the given Object is a String.
-	 * 
+	 *
 	 * @param obj is the object
 	 * @return true if this object is a String
 	 */
@@ -154,10 +171,10 @@ public class ObjectToXml
 			return false;  // Not a string
 		}
 	}
-	
+
 	/**
 	 * Determine if the given Object is a List.
-	 * 
+	 *
 	 * @param obj is the object
 	 * @return true if this object is a List
 	 */
@@ -173,10 +190,10 @@ public class ObjectToXml
 			return false;  // Not at string
 		}
 	}
-	
+
 	/**
 	 * Determine if the given Object is a Map.
-	 * 
+	 *
 	 * @param obj is the object
 	 * @return true if this object is a Map
 	 */
