@@ -332,7 +332,7 @@ public class NodeTag extends BaseTag
 				else if (childTag.compareTo(Tag.RosParam.val()) == 0)
 				{
 					RosParamTag rosParam = new RosParamTag(
-							m_parentFile, child, argMap, m_ns);
+							m_parentFile, child, argMap, privateNs);
 					if (rosParam.isEnabled()) {
 						m_rosParams.add(rosParam);
 					}

@@ -125,43 +125,6 @@ public class ParamManager
 	}
 
 	/**
-	 * Print each of the given ParamTags to the screen.
-	 *
-	 * @param params the List of ParamTags to print
-	 */
-	public static void printParameters(final List<ParamTag> params)
-	{
-		for (ParamTag param : params) {
-			printParam(param);
-		}
-	}
-
-	/**
-	 * Print a single ParamTag to the screen.
-	 *
-	 * @param param the ParamTag to print
-	 */
-	public static void printParam(final ParamTag param)
-	{
-		// Only print enabled params
-		if (param.isEnabled())
-		{
-			String value = param.getValue();
-
-			// Only display the first 20 characters, if the param
-			// value is very long
-			if (value.length() > 20) {
-				value = value.substring(0, 20) + "...";
-			}
-
-			// Remove carriage returns and new lines for display purposes
-			value = value.replace("\r", "").replace("\n", "");
-
-			System.out.println(" * " + param.getResolvedName() + ": " + value);
-		}
-	}
-
-	/**
 	 * Send a request to the ROS master server to set each
 	 * of the given ParamTags
 	 *

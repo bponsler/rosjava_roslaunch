@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 import org.ros.rosjava.roslaunch.ArgumentParser;
 import org.ros.rosjava.roslaunch.parsing.GroupTag;
@@ -158,10 +160,7 @@ public class LaunchConfig
 
 		//// Print parameters
 		//
-		System.out.println("PARAMETERS");
-		RosParamManager.printParameters(m_loadRosParamsMap);
-		ParamManager.printParameters(m_params);
-		System.out.println("");
+		printAllParams();
 
 		//// Print nodes
 		//
@@ -176,6 +175,40 @@ public class LaunchConfig
 		for (LaunchFile launch : m_allLaunchFiles) {
 			printDeprecatedLaunchFile(launch);
 		}
+	}
+
+	/**
+	 * Print all parameters (rosparams and params) to the screen.
+	 */
+	public void printAllParams()
+	{
+		// Create a single map that contains all rosparams and params
+		Map<String, String> paramMap = new HashMap<String, String>();
+		paramMap.putAll(m_loadRosParamsMap);
+		ParamManager.dumpParameters(m_params, paramMap);
+
+		System.out.println("PARAMETERS");
+
+		// Iterate over the parameters in sorted order so they are printed
+		// together with the rest of the params for their namespace
+		SortedSet<String> paramNames = new TreeSet<String>(paramMap.keySet());
+		for (String name : paramNames)
+		{
+			String value = paramMap.get(name);
+
+			// Only display the first 20 characters, if the param
+			// value is very long
+			if (value.length() > 20) {
+				value = value.substring(0, 20) + "...";
+			}
+
+			// Remove carriage returns and new lines for display purposes
+			value = value.replace("\r", "").replace("\n", "");
+
+			System.out.println(" * " + name + ": " + value);
+		}
+
+		System.out.println("");
 	}
 
 	/**

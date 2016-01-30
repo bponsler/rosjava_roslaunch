@@ -257,34 +257,6 @@ public class RosParamManager
 
 
 	//////////////////////////////////////////////
-	// print functions
-	//
-
-	/**
-	 * Print each of the given rosparam name value pairs to the screen.
-	 *
-	 * @param rosParamsMap the Map of rosparam name value pairs to print
-	 */
-	public static void printParameters(final Map<String, String> rosParamsMap)
-	{
-		for (String name : rosParamsMap.keySet())
-		{
-			// Only display the first 20 characters, if the param
-			// value is very long
-			String value = rosParamsMap.get(name);
-			if (value.length() > 20) {
-				value = value.substring(0, 20) + "...";
-			}
-
-			// Remove carriage returns and new lines for display purposes
-			value = value.replace("\r", "").replace("\n", "");
-
-			System.out.println(" * " + name + ": " + value);
-		}
-	}
-
-
-	//////////////////////////////////////////////
 	// set functions
 	//
 
