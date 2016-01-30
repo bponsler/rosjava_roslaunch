@@ -1,6 +1,6 @@
 package org.ros.rosjava.roslaunch.util;
 
-import java.io.BufferedReader; 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -9,6 +9,7 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.ros.rosjava.roslaunch.logging.PrintLog;
 import org.ros.rosjava.roslaunch.parsing.Attribute;
 import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
@@ -25,11 +26,11 @@ public class Util
 {
 	/** The current title of the terminal window. */
 	private static String TERMINAL_TITLE = "";
-	
+
 	/**
 	 * Expand any user home directory references contained within the
 	 * given path string.
-	 * 
+	 *
 	 * @param path is the path to expand
 	 * @return the path with any user home directory references expanded
 	 */
@@ -38,10 +39,10 @@ public class Util
        String userHomeDir = System.getProperty("user.home");
        return path.replaceFirst("~", userHomeDir);
 	}
-	
+
 	/**
 	 * Get the output of the execution of the given command.
-	 * 
+	 *
 	 * @param command is the command to run
 	 * @return the output of the command
 	 * @throws a RuntimeException if the command is invalid
@@ -52,21 +53,21 @@ public class Util
 		// process builder, otherwise it will fail to run
 		// commands that have any arguments
 		String[] cmd = command.split(" ");
-		
+
 		try
 		{
 		    ProcessBuilder pb = new ProcessBuilder(cmd);
-	
+
 		    Process p = pb.start();
 		    InputStream is = p.getInputStream();
 		    BufferedReader br = new BufferedReader(new InputStreamReader(is));
-		    
+
 		    String output = "";
 		    String line = null;
 		    while ((line = br.readLine()) != null) {
 		    	output += line + "\n";
 		    }
-		    
+
 		    // Wait for the process to finish
 		    int r = p.waitFor();
 		    if (r == 0) {
@@ -78,13 +79,13 @@ public class Util
 			throw new RuntimeException(
 					"Invalid <param> tag: invalid command: " + e.getMessage());
 		}
-		
+
 		return "";
 	}
-	
+
 	/**
 	 * Get the process ID for the current process.
-	 * 
+	 *
 	 * @return the process ID for the current process
 	 */
 	public static Integer getPid()
@@ -93,14 +94,14 @@ public class Util
 		//     PID@hostname
 		String processName =
 				java.lang.management.ManagementFactory.getRuntimeMXBean().getName();
-		
+
 		// Split the process name and return the pid
-		return Integer.parseInt(processName.split("@")[0]);	
+		return Integer.parseInt(processName.split("@")[0]);
 	}
-	
+
 	/**
 	 * Get the process ID for the given process.
-	 * 
+	 *
 	 * @param process is the given process
 	 * @return the process ID for the given process
 	 */
@@ -109,17 +110,17 @@ public class Util
 		// Currently only support unix PIDs
 		return getUnixPid(process);
 	}
-	
+
 	/**
 	 * Get the process ID for a unix process.
-	 * 
+	 *
 	 * @param process is the process
 	 * @return the process ID for unix processes, or -1 for other process types
 	 */
 	private static int getUnixPid(final Process process)
 	{
 		try
-		{	
+		{
 			// The UNIXProcess class (which contains the pid field)
 			// is not accessible, therefore need to get the pid field
 			// value without casting
@@ -129,7 +130,7 @@ public class Util
 				// Grab the pid field from the object
 				Field pid = classObj.getDeclaredField("pid");
 				pid.setAccessible(true);  // Need to access the pid value
-				
+
 				// Return the pid for this process
 				return (int)pid.get(process);
 			}
@@ -138,13 +139,13 @@ public class Util
 			// Ignore errors -- just means we weren't able
 			// to determine the pid
 		}
-		
+
 		return -1;  // No pid found
 	}
-	
+
 	/**
 	 * Write the process ID file.
-	 * 
+	 *
 	 * @param pidFilename is the file to write with the process ID
 	 * @throws a RuntimeException if the file could not be created
 	 */
@@ -155,17 +156,17 @@ public class Util
 		if (pid == null) {
 			throw new RuntimeException("Failed to get PID for process");
 		}
-		
+
 		// Expand potential references to the user's home directory
 		String expanded = expandUser(pidFilename);
 		File path = new File(expanded);
 		String pidFilePath = path.getAbsolutePath();
-		
+
 		// Attempt to write the PID file
 		FileOutputStream out = null;
 		try {
 			out = new FileOutputStream(pidFilePath);
-			
+
 			String content = pid.toString();
 			out.write(content.getBytes());
 		}
@@ -184,10 +185,10 @@ public class Util
 			}
 		}
 	}
-	
+
 	/**
 	 * Set the title of the terminal this program was executed in.
-	 * 
+	 *
 	 * @param title is the string to set the terminal title to
 	 */
 	public static void setTerminalTitle(final String title)
@@ -200,28 +201,28 @@ public class Util
 			System.out.print("\033]2;" + title + "\007");
 		}
 	}
-	
+
 	/**
 	 * Update the title of the terminal this program was executed in.
-	 * 
+	 *
 	 * @param title is the string to add to the current title
 	 */
 	public static void updateTerminalTitle(final String title)
 	{
 		setTerminalTitle(TERMINAL_TITLE + " " + title);
 	}
-	
+
 	public static void checkForUnknownAttributes(
 			final File file,
 			final Element element,
 			final Attribute[] supportedAttributes)
-	{	
+	{
 		// Create a List of attribute names
 		List<String> supportedAttributeNames = new ArrayList<String>();
 		for (Attribute attr : supportedAttributes) {
 			supportedAttributeNames.add(attr.val());
 		}
-		
+
 		NamedNodeMap attributes = element.getAttributes();
 		for (int index = 0; index < attributes.getLength(); ++index)
 		{
@@ -230,14 +231,14 @@ public class Util
 			if (!supportedAttributeNames.contains(attributeName))
 			{
 				String filename = file.getAbsolutePath();
-				
-				System.err.println(
+
+				PrintLog.error(
 					"WARNING: [" + filename + "] unknown <" + element.getTagName() +
 					"> attribute '" + attributeName + "'");
 			}
 		}
 	}
-	
+
 	/**
 	 * Get the current working directory.
 	 *

@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.ros.rosjava.roslaunch.logging.PrintLog;
+
 /**
  * The ProcessMonitor class
  *
@@ -97,11 +99,11 @@ public class ProcessMonitor
 						String bar = "";
 						for (int i = 0; i < 80; ++i) bar += "=";
 
-						System.out.println(bar);
-						System.out.println("REQUIRED process [" + proc.getName() + "] has died!");
-						System.out.println(exitCodeDesc);
-						System.out.println("Initiating shutdown!");
-						System.out.println(bar);
+						PrintLog.error(bar);
+						PrintLog.error("REQUIRED process [" + proc.getName() + "] has died!");
+						PrintLog.error(exitCodeDesc);
+						PrintLog.error("Initiating shutdown!");
+						PrintLog.error(bar);
 
 						// Stop all other processes
 						this.shutdown();
@@ -113,7 +115,7 @@ public class ProcessMonitor
 						if (!m_respawningProcesses.containsKey(proc))
 						{
 							//// Lost a non-required node
-							System.out.println("[" + proc.getName() + "]: " + exitCodeDesc);
+							PrintLog.error("[" + proc.getName() + "]: " + exitCodeDesc);
 
 							diedProcesses.put(proc, timeOfDeath);
 						}
@@ -134,7 +136,7 @@ public class ProcessMonitor
 					//m_respawningProcesses.put(deadProc, timeOfDeath);
 
 					// TODO: finish implementing respawning of nodes
-					System.err.println(
+					PrintLog.error(
 						"WARNING: respawning nodes is not yet implemented!");
 					deadProc.destroy();
 					m_deadProcesses.add(deadProc);
@@ -168,7 +170,7 @@ public class ProcessMonitor
 				float respawnDelaySeconds = respawn.getRespawnDelaySeconds();
 				if (secondsSinceDeath >= respawnDelaySeconds)
 				{
-					System.out.println("[" + respawn.getName() + "] restarting process");
+					PrintLog.info("[" + respawn.getName() + "] restarting process");
 
 					// Restart the process
 					try {
@@ -176,7 +178,7 @@ public class ProcessMonitor
 					}
 					catch (Exception e)
 					{
-						System.err.println(
+						PrintLog.error(
 							"Restart of process [" + respawn.getName() + "] failed: " + e.getMessage());
 					}
 				}
@@ -204,7 +206,7 @@ public class ProcessMonitor
 		for (RosProcess proc : m_processes)
 		{
 			if (proc.isRunning()) {
-				System.out.println("[" + proc.getName() + "] killing on exit");
+				PrintLog.info("[" + proc.getName() + "] killing on exit");
 				proc.destroy();
 			}
 		}
@@ -215,10 +217,14 @@ public class ProcessMonitor
 			try {
 				proc.waitFor();
 			} catch (InterruptedException e) {
-				System.out.println("Error while waiting for process to stop: " + e.getMessage());
+				PrintLog.error("Error while waiting for process to stop: " + e.getMessage());
 			}
 		}
 
 		m_isShutdown = true;
+
+		PrintLog.info("shutting down processing monitor...");
+		PrintLog.info("... shutting down processing monitor complete");
+		PrintLog.bold("done");
 	}
 }

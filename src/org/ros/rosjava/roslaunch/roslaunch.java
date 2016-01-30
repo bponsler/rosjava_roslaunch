@@ -7,6 +7,7 @@ import java.util.List;
 import org.ros.rosjava.roslaunch.launching.ArgManager;
 import org.ros.rosjava.roslaunch.launching.NodeManager;
 import org.ros.rosjava.roslaunch.launching.RosLaunchRunner;
+import org.ros.rosjava.roslaunch.logging.PrintLog;
 import org.ros.rosjava.roslaunch.parsing.ArgTag;
 import org.ros.rosjava.roslaunch.parsing.LaunchFile;
 import org.ros.rosjava.roslaunch.parsing.NodeTag;
@@ -14,7 +15,6 @@ import org.ros.rosjava.roslaunch.util.EnvVar;
 import org.ros.rosjava.roslaunch.util.RosUtil;
 import org.ros.rosjava.roslaunch.util.Util;
 
-// TODO: create a logger to write colors and bold to terminal
 // TODO: handle logging, check log file size
 // TODO: respawn for nodes is not handled
 // TODO: test nodes are not implemented
@@ -80,7 +80,7 @@ public class roslaunch
 	private static void printUsage(final String error)
 	{
 		String usage = getUsage(error);
-		System.err.println(usage);
+		PrintLog.info(usage);
 
 		// Clean up the process if there was an error
 		if (error.length() > 0) {
@@ -127,7 +127,7 @@ public class roslaunch
         help += "                        override the socket connection timeout (in seconds).\n";
         help += "                        Only valid for core services.\n";
 
-        System.out.println(help);
+        PrintLog.info(help);
 	}
 
 	/**
@@ -198,8 +198,7 @@ public class roslaunch
 			boolean isRunning = RosUtil.isMasterRunning(masterUri);
 			if (!isRunning)
 			{
-				System.out.println(
-					"roscore/master is not yet running, will wait for it to start");
+				PrintLog.info("roscore/master is not yet running, will wait for it to start");
 
 				// Wait for the master to start running
 				while (!isRunning)
@@ -218,14 +217,14 @@ public class roslaunch
 				// If the master still isn't running, then something went wrong
 				if (!isRunning)
 				{
-					System.err.println("unknown error waiting for master to start");
+					PrintLog.error("unknown error waiting for master to start");
 
 					cleanup();
 					return;
 				}
 			}
 
-			System.out.println("master has started, initiating launch");
+			PrintLog.info("master has started, initiating launch");
 		}
 
 		// Handle creating the PID file for the --core option, but
@@ -310,7 +309,7 @@ public class roslaunch
 				launchFile.parseFile();
 			}
 			catch (Exception e) {
-				System.err.println("[" + f.getPath() + "]: " + e.getMessage());
+				PrintLog.error("[" + f.getPath() + "]: " + e.getMessage());
 				return;  // Stop on any errors
 			}
 
@@ -333,18 +332,18 @@ public class roslaunch
 			// Print out required args
 			if (requiredArgs.size() > 0)
 			{
-				System.out.println("Required Arguments:");
+				PrintLog.info("Required Arguments:");
 				for (ArgTag arg : requiredArgs)
 				{
 					String doc = "undocumented";
-					System.out.println("  " + arg.getName() + ": " + doc);
+					PrintLog.info("  " + arg.getName() + ": " + doc);
 				}
 			}
 
 			// Print out optional args
 			if (optionalArgs.size() > 0)
 			{
-				System.out.println("Optional Arguments:");
+				PrintLog.info("Optional Arguments:");
 				for (ArgTag arg : optionalArgs)
 				{
 					String defaultStr = "(default \"" + arg.getDefaultValue() + "\")";
@@ -355,7 +354,7 @@ public class roslaunch
 						doc = "undocumented";
 					}
 
-					System.out.println("  " + arg.getName() + " " + defaultStr + ": " + doc);
+					PrintLog.info("  " + arg.getName() + " " + defaultStr + ": " + doc);
 				}
 			}
 
@@ -390,14 +389,14 @@ public class roslaunch
 				if (node != null)
 				{
 					// Found the node -- print its filename
-					System.out.println(node.getFilename());
+					PrintLog.info(node.getFilename());
 					return;
 				}
 			}
 
-			System.out.println("Could not find node named [" + nodeName + "]. Run");
-			System.out.println("    " + PROGRAM_NAME + "--nodes <files>");
-			System.out.println("to see list of node names");
+			PrintLog.info("ERROR: cannot find node named [" + nodeName + "]. Run");
+			PrintLog.info("    " + PROGRAM_NAME + "--nodes <files>");
+			PrintLog.info("to see list of node names");
 			return;
 		}
 		else if (parsedArgs.hasNodeArgs())
@@ -420,11 +419,10 @@ public class roslaunch
 					{
 						// Found the node -- print its command line arguments
 						String[] clArgs = NodeManager.getNodeCommandLine(node, true);
-						for (String arg : clArgs)
-						{
-							System.out.print(arg + " ");
+						for (String arg : clArgs) {
+							PrintLog.info(arg + " ");
 						}
-						System.out.print("\n");
+						PrintLog.info("\n");
 
 						return;
 					}
@@ -440,15 +438,15 @@ public class roslaunch
 				checkedFiles += launchFile.getFilename();
 			}
 
-			System.err.println(
+			PrintLog.info(
 				"ERROR: Cannot find node named [" + nodeName + "] in [" + checkedFiles + "].");
 
 			// Print out all nodes in the tree
-			System.err.println("Node names are:");
+			PrintLog.info("Node names are:");
 			for (NodeTag node : nodes)
 			{
 				if (node.isEnabled()) {
-					System.err.println(" * " + node.getResolvedName());
+					PrintLog.info(" * " + node.getResolvedName());
 				}
 			}
 		}
@@ -476,7 +474,7 @@ public class roslaunch
 			// Print out this warning until remote nodes are launched properly
 			if (parsedArgs.hasLocal())
 			{
-				System.out.println(
+				PrintLog.error(
 					"WARNING: the --local argument is not yet supported as it is " +
 					"currently the default behavior to only run local nodes");
 			}
@@ -486,7 +484,7 @@ public class roslaunch
 				NodeManager.checkForDuplicateNodeNames(launchFiles);
 			}
 			catch (Exception e) {
-				System.err.println(e.getMessage());
+				PrintLog.error(e.getMessage());
 				return;
 			}
 
@@ -506,7 +504,7 @@ public class roslaunch
 				}
 				catch (Exception e) {
 					e.printStackTrace(); // TODO: just for debugging
-					System.err.println("ERROR: launch failed: " + e.getMessage());
+					PrintLog.error("ERROR: launch failed: " + e.getMessage());
 					return;
 				}
 			}
@@ -518,7 +516,7 @@ public class roslaunch
 				}
 				catch (Exception e) {
 					e.printStackTrace(); // TODO: just for debugging
-					System.err.println("ERROR: launch failed: " + e.getMessage());
+					PrintLog.error("ERROR: launch failed: " + e.getMessage());
 					return;
 				}
 

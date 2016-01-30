@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.ros.rosjava.roslaunch.logging.PrintLog;
 import org.ros.rosjava.roslaunch.parsing.GroupTag;
 import org.ros.rosjava.roslaunch.parsing.IncludeTag;
 import org.ros.rosjava.roslaunch.parsing.LaunchFile;
@@ -109,13 +110,13 @@ public class ClearParamsManager
 	{
 		if (clearParams.size() > 0)
 		{
-			System.out.println("CLEAR PARAMETERS");
+			PrintLog.info("CLEAR PARAMETERS");
 
 			for (String namespace : clearParams) {
-				System.out.println(" * " + namespace);
+				PrintLog.info(" * " + namespace);
 			}
 
-			System.out.println("");  // Space between next section
+			PrintLog.info("");  // Space between next section
 		}
 	}
 

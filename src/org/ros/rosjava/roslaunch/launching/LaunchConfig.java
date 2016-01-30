@@ -9,6 +9,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 
 import org.ros.rosjava.roslaunch.ArgumentParser;
+import org.ros.rosjava.roslaunch.logging.PrintLog;
 import org.ros.rosjava.roslaunch.parsing.GroupTag;
 import org.ros.rosjava.roslaunch.parsing.IncludeTag;
 import org.ros.rosjava.roslaunch.parsing.LaunchFile;
@@ -151,9 +152,9 @@ public class LaunchConfig
 	 */
 	public void printSummary()
 	{
-		System.out.println("SUMMARY");
-		System.out.println("========");
-		System.out.println("");
+		PrintLog.info("SUMMARY");
+		PrintLog.info("========");
+		PrintLog.info("");
 
 		//// Print clear params
 		ClearParamsManager.printClearParams(m_clearParams);
@@ -164,12 +165,12 @@ public class LaunchConfig
 
 		//// Print nodes
 		//
-		System.out.println("NODES");
+		PrintLog.info("NODES");
 
 		// Do not include the core nodes in the print of nodes started
 		// Note: do not print non-local nodes
 		NodeManager.printNodes(m_localNodes);
-		System.out.println("");
+		PrintLog.info("");
 
 		//// Print deprecated launch files
 		for (LaunchFile launch : m_allLaunchFiles) {
@@ -187,7 +188,7 @@ public class LaunchConfig
 		paramMap.putAll(m_loadRosParamsMap);
 		ParamManager.dumpParameters(m_params, paramMap);
 
-		System.out.println("PARAMETERS");
+		PrintLog.info("PARAMETERS");
 
 		// Iterate over the parameters in sorted order so they are printed
 		// together with the rest of the params for their namespace
@@ -205,10 +206,10 @@ public class LaunchConfig
 			// Remove carriage returns and new lines for display purposes
 			value = value.replace("\r", "").replace("\n", "");
 
-			System.out.println(" * " + name + ": " + value);
+			PrintLog.info(" * " + name + ": " + value);
 		}
 
-		System.out.println("");
+		PrintLog.info("");
 	}
 
 	/**
@@ -245,7 +246,7 @@ public class LaunchConfig
 		}
 		output += "}";
 
-		System.out.println(output);
+		PrintLog.info(output);
 	}
 
 	/**
@@ -416,7 +417,7 @@ public class LaunchConfig
 			String deprecated = launchFile.getDeprecated();
 			if (deprecated != null && deprecated.length() > 0)
 			{
-				System.err.println(
+				PrintLog.error(
 					"WARNING: [" + launchFile.getFilename() + "] DEPRECATED: " + deprecated);
 			}
 		}

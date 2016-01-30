@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.ros.rosjava.roslaunch.logging.PrintLog;
 import org.ros.rosjava.roslaunch.parsing.RosParamTag;
 import org.ros.rosjava.roslaunch.util.RosUtil;
 
@@ -168,8 +169,7 @@ public class RosXmlRpcClient
 				}
 				catch (Exception e)
 				{
-					System.err.println(
-						"Failed to set param: " + resolvedKey + ": " + e.getMessage());
+					PrintLog.error("Failed to set param: " + resolvedKey + ": " + e.getMessage());
 					success = false;
 				}
 			}

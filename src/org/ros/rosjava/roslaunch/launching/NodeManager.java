@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.ros.rosjava.roslaunch.ArgumentParser;
+import org.ros.rosjava.roslaunch.logging.PrintLog;
 import org.ros.rosjava.roslaunch.parsing.GroupTag;
 import org.ros.rosjava.roslaunch.parsing.IncludeTag;
 import org.ros.rosjava.roslaunch.parsing.LaunchFile;
@@ -161,7 +162,7 @@ public class NodeManager
 		{
 			List<NodeTag> nodes = namespaceMap.get(namespace);
 
-			System.out.println("  " + namespace);
+			PrintLog.info("  " + namespace);
 
 			for (NodeTag node: nodes)
 			{
@@ -169,7 +170,7 @@ public class NodeManager
 				String label =
 					node.getName() + " (" + node.getPackage() +	"/" + node.getType() + ")";
 
-				System.out.println("    " + label);
+				PrintLog.info("    " + label);
 			}
 		}
 	}
@@ -227,7 +228,7 @@ public class NodeManager
 		}
 		catch (IOException e)
 		{
-			System.out.println(
+			PrintLog.error(
 				"Failed to start node: " + node.getResolvedName() + ": " + e.getMessage());
 			return null;
 		}
@@ -248,10 +249,10 @@ public class NodeManager
 				pidMsg = "with pid [" + pid + "]";
 			}
 
-			System.out.println("process[" + rosProc.getName() + "]: started " + pidMsg);
+			PrintLog.bold("process[" + rosProc.getName() + "]: started " + pidMsg);
 		}
 		else {
-			System.out.println("started core service [" + rosProc.getName() + "]");
+			PrintLog.info("started core service [" + rosProc.getName() + "]");
 		}
 
 		return rosProc;

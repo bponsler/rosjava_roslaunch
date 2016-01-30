@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Map;
 
+import org.ros.rosjava.roslaunch.logging.PrintLog;
 import org.ros.rosjava.roslaunch.util.RosUtil;
 import org.ros.rosjava.roslaunch.util.Util;
 import org.w3c.dom.Element;
@@ -190,7 +191,7 @@ public class ParamTag extends BaseTag
 		if (hasBinFile)
 		{
 			// TODO: finish supporting this
-			System.out.println(
+			PrintLog.error(
 				"WARNING: the param tag attribute 'binfile' is not yet supported!");
 		}
 

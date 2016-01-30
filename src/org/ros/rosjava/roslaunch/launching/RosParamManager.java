@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.ros.rosjava.roslaunch.logging.PrintLog;
 import org.ros.rosjava.roslaunch.parsing.GroupTag;
 import org.ros.rosjava.roslaunch.parsing.IncludeTag;
 import org.ros.rosjava.roslaunch.parsing.LaunchFile;
@@ -341,7 +342,7 @@ public class RosParamManager
 		{
 			String param = rosParam.getResolvedName();
 
-			System.out.println("running rosparam delete " + param);
+			PrintLog.info("running rosparam delete " + param);
 
 			RosXmlRpcClient client = new RosXmlRpcClient(uri);
 
@@ -357,7 +358,7 @@ public class RosParamManager
 				}
 			}
 			catch (Exception e) {
-				System.err.println(e.getMessage());
+				PrintLog.error(e.getMessage());
 			}
 		}
 	}
@@ -414,7 +415,7 @@ public class RosParamManager
 				String[] command = new String[fullCommand.size()];
 				fullCommand.toArray(command);
 
-				System.out.println("running rosparam dump " + file + " " + resolvedName);
+				PrintLog.info("running rosparam dump " + file + " " + resolvedName);
 
 				Process proc;
 				try {
@@ -428,7 +429,7 @@ public class RosParamManager
 					String msg = "ERROR: while running: rosparam dump " + file + " " + resolvedName;
 					msg += "\n" + e.getMessage();
 
-					System.err.println(msg);
+					PrintLog.error(msg);
 				}
 			}
 		}

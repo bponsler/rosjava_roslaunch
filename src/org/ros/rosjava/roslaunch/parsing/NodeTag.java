@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.ros.rosjava.roslaunch.logging.PrintLog;
 import org.ros.rosjava.roslaunch.util.EnvVar;
 import org.ros.rosjava.roslaunch.util.RosUtil;
 import org.ros.rosjava.roslaunch.util.Util;
@@ -339,7 +340,7 @@ public class NodeTag extends BaseTag
 				}
 				else
 				{
-					System.err.println(
+					PrintLog.error(
 						"WARN: unrecognized '" + childTag + "' tag in <node> tag");
 				}
 			}

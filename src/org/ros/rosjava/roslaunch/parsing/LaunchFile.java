@@ -11,6 +11,7 @@ import java.util.Set;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
+import org.ros.rosjava.roslaunch.logging.PrintLog;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -299,7 +300,7 @@ public class LaunchFile
 		for (NodeTag node : m_nodes)
 		{
 			if (node.isEnabled()) {
-				System.out.println(node.getResolvedName());
+				PrintLog.info(node.getResolvedName());
 			}
 		}
 	}
@@ -310,7 +311,7 @@ public class LaunchFile
 	public void printFiles()
 	{
 		if (m_filename != null) {
-			System.out.println(m_filename);
+			PrintLog.info(m_filename);
 		}
 
 		for (IncludeTag include : m_includes)
@@ -542,7 +543,7 @@ public class LaunchFile
 					}
 				}
 				else {
-					System.out.println("WARNING: unknown tag: [" + childTag + "]");
+					PrintLog.error("WARNING: unrecognized tag: [" + childTag + "]");
 				}
 			}
 		}

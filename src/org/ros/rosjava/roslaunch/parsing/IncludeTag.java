@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.ros.rosjava.roslaunch.logging.PrintLog;
 import org.ros.rosjava.roslaunch.util.RosUtil;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -249,7 +250,7 @@ public class IncludeTag extends BaseTag
 				}
 				else
 				{
-					System.err.println(
+					PrintLog.error(
 						"WARN: unrecognized '" + childTag + "' tag in <include> tag");
 				}
 			}
