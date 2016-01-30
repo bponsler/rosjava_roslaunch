@@ -79,6 +79,9 @@ public class IncludeTag extends BaseTag
 	{
 		super(parentFile, include, argMap, SUPPORTED_ATTRIBUTES);
 
+		// Stop parsing if the tag is not included
+		if (!isEnabled()) return;
+
 		// Add the direct parent to the set
 		m_parentFilenames = new HashSet<String>(parentFilenames);
 		m_parentFilenames.add(parentFile.getAbsolutePath());

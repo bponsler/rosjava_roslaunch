@@ -128,6 +128,9 @@ public class NodeTag extends BaseTag
 	{
 		super(parentFile, node, argMap, SUPPORTED_ATTRIBUTES);
 
+		// Stop parsing if the tag is not included
+		if (!isEnabled()) return;
+
 		m_params = new ArrayList<ParamTag>();
 		m_env = new HashMap<String, String>(env);
 		m_remappings = new HashMap<String, String>(remappings);

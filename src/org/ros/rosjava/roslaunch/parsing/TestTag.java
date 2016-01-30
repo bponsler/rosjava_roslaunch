@@ -78,6 +78,9 @@ public class TestTag extends BaseTag
 	{
 		super(parentFile, test, argMap, SUPPORTED_ATTRIBUTES);
 
+		// Stop parsing if the tag is not included
+		if (!isEnabled()) return;
+
 		// The name attribute is required
 		if (!test.hasAttribute(Attribute.Test_Name.val())) {
 			throw new RuntimeException(

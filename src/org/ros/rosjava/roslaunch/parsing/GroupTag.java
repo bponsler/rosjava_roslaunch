@@ -53,6 +53,9 @@ public class GroupTag extends BaseTag
 	{
 		super(parentFile, group, argMap, SUPPORTED_ATTRIBUTES);
 
+		// Stop parsing if the tag is not included
+		if (!isEnabled()) return;
+
 		m_remaps = new HashMap<String, String>(remaps);
 
 		// Get the optional namespace attribute

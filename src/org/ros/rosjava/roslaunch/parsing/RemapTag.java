@@ -44,6 +44,9 @@ public class RemapTag extends BaseTag
 	{
 		super(parentFile, remap, argMap, SUPPORTED_ATTRIBUTES);
 
+		// Stop parsing if the tag is not included
+		if (!isEnabled()) return;
+
 		// From is a required attribute
 		if (!remap.hasAttribute(Attribute.From.val())) {
 			throw new RuntimeException(

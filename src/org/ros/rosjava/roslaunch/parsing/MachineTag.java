@@ -112,6 +112,9 @@ public class MachineTag extends BaseTag
 	{
 		super(parentFile, machine, argMap, SUPPORTED_ATTRIBUTES);
 
+		// Stop parsing if the tag is not included
+		if (!isEnabled()) return;
+
 		// name (required)
 		if (!machine.hasAttribute(Attribute.Name.val())) {
 			throw new RuntimeException(

@@ -66,6 +66,9 @@ public class ParamTag extends BaseTag
 	{
 		super(parentFile, param, argMap, SUPPORTED_ATTRIBUTES);
 
+		// Stop parsing if the tag is not included
+		if (!isEnabled()) return;
+
 		m_ns = parentNs;
 
 		if (!param.hasAttribute(Attribute.Name.val()))

@@ -418,8 +418,10 @@ public class LaunchFile
 			// Parse all attributes
 			parseAttributes(launch);
 
-			// Parse all children
-			parseChildren(launch);
+			// Parse all children -- only when enabled
+			if (isEnabled()) {
+				parseChildren(launch);
+			}
 		}
 	}
 

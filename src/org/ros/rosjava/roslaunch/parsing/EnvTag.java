@@ -39,6 +39,9 @@ public class EnvTag extends BaseTag
 	{
 		super(parentFile, env, argMap, SUPPORTED_ATTRIBUTES);
 
+		// Stop parsing if the tag is not included
+		if (!isEnabled()) return;
+
 		// The name attribute is required
 		if (!env.hasAttribute(Attribute.Name.val())) {
 			throw new RuntimeException("<env> tag is missing the required 'name' attribute");

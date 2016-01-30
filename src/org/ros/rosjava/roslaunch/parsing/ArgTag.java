@@ -51,6 +51,9 @@ public class ArgTag extends BaseTag
 	{
 		super(parentFile, arg, argMap, SUPPORTED_ATTRIBUTES);
 
+		// Stop parsing if the tag is not included
+		if (!isEnabled()) return;
+
 		m_defaultValue = null;
 		m_hasDefaultValue = false;
 		m_hasValue = false;

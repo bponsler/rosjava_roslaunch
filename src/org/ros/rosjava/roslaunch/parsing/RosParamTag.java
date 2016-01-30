@@ -101,6 +101,9 @@ public class RosParamTag extends BaseTag
 	{
 		super(parentFile, rosparam, argMap, SUPPORTED_ATTRIBUTES);
 
+		// Stop parsing if the tag is not included
+		if (!isEnabled()) return;
+
 		boolean isYamlDict = false;  // Assume no YAML dictionary by default
 
 		// Add list of supported commands
