@@ -279,6 +279,20 @@ public class LaunchFile
 	}
 
 	/**
+	 * Get the List of names of all ArgTags defined by this LaunchFile.
+	 *
+	 * @return the List of ArgTag names
+	 */
+	public List<String> getArgNames()
+	{
+		List<String> names = new ArrayList<String>();
+		for (ArgTag arg : m_args) {
+			names.add(arg.getName());
+		}
+		return names;
+	}
+
+	/**
 	 * Print all of the nodes defined in the launch file tree.
 	 */
 	public void printNodes()

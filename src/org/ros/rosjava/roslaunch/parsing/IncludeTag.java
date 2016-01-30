@@ -1,8 +1,10 @@
 package org.ros.rosjava.roslaunch.parsing;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -27,11 +29,13 @@ public class IncludeTag extends BaseTag
 	/** The value of the clear params tag. */
 	private boolean m_clearParams;
 
-	/** The map of args defined in this include's scope. */
+	/** The List ArgTags passed to the included launch file. */
+	private List<ArgTag> m_argTags;
+	/** The Map of args defined in this include's scope. */
 	private Map<String, String> m_args;
-	/** The map of env variables defined in this include's scope. */
+	/** The Map of env variables defined in this include's scope. */
 	private Map<String, String> m_env;
-	/** The map of remap tags defined in this include's scope. */
+	/** The Map of remap tags defined in this include's scope. */
 	private Map<String, String> m_remaps;
 
 	/** Set of launch file names that are direct parents of this LaunchFile. */
@@ -79,6 +83,7 @@ public class IncludeTag extends BaseTag
 		m_parentFilenames = new HashSet<String>(parentFilenames);
 		m_parentFilenames.add(parentFile.getAbsolutePath());
 
+		m_argTags = new ArrayList<ArgTag>();
 		m_args = new HashMap<String, String>(argMap);
 		m_env = new HashMap<String, String>(env);  // Store incoming environment
 		m_remaps = new HashMap<String, String>(remaps);
@@ -156,10 +161,30 @@ public class IncludeTag extends BaseTag
 				"Invalid <include> tag: cannot set both 'if' and 'unless' on the same tag");
 		}
 
-		// If will default to 'true' if unspecified, and unless will default to 'false'
-		// if unspecified. Which both equate to being enabled
-		m_if = RosUtil.getBoolAttribute(include, Attribute.If.val(), true, false, argMap);
-		m_unless = RosUtil.getBoolAttribute(include, Attribute.Unless.val(), false, false, argMap);
+		// Only check for unused args if the include is enabled
+		if (isEnabled())
+		{
+			// Compare the set of args defined in the included launch file to
+			// the set of includes passed to the include to determine if any of
+			// the includes passed to the launch file were not actually used
+			List<String> launchArgNames = m_launchFile.getArgNames();
+			String unusedArgs = "";
+			for (ArgTag arg : m_argTags)
+			{
+				String argName = arg.getName();
+				if (!launchArgNames.contains(argName))
+				{
+					if (unusedArgs.length() > 0) unusedArgs += ", ";  // Add comma separator
+					unusedArgs += argName;
+				}
+			}
+
+			// Throw an error about the unused args, if there are any
+			if (unusedArgs.length() > 0) {
+				throw new RuntimeException(
+					"unused args [" + unusedArgs + "] for include of [" + file + "]");
+			}
+		}
 	}
 
 	/**
@@ -237,7 +262,9 @@ public class IncludeTag extends BaseTag
 				if (childTag.compareTo(Tag.Arg.val()) == 0)
 				{
 					ArgTag arg = new ArgTag(m_parentFile, child, m_args);
-					if (arg.isEnabled()) {
+					if (arg.isEnabled())
+					{
+						m_argTags.add(arg);
 						m_args.put(arg.getName(), arg.getValue());
 					}
 				}
