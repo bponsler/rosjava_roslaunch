@@ -29,13 +29,21 @@ public class ArgManager
 		// Add args from all launch files
 		for (LaunchFile launchFile : launchFiles)
 		{
-			for (ArgTag arg : launchFile.getArgs())
+			// Ignore disabled launch files
+			if (launchFile.isEnabled())
 			{
-				if (arg.isRequired()) {
-					requiredArgs.add(arg);
-				}
-				else if (arg.isOptional()) {
-					optionalArgs.add(arg);
+				for (ArgTag arg : launchFile.getArgs())
+				{
+					// Only return enabled args
+					if (arg.isEnabled())
+					{
+						if (arg.isRequired()) {
+							requiredArgs.add(arg);
+						}
+						else if (arg.isOptional()) {
+							optionalArgs.add(arg);
+						}
+					}
 				}
 			}
 		}

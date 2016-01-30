@@ -7,7 +7,6 @@ import java.util.Map;
 import java.util.Set;
 
 import org.ros.rosjava.roslaunch.util.RosUtil;
-import org.ros.rosjava.roslaunch.util.Util;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -18,41 +17,31 @@ import org.w3c.dom.NodeList;
  * This class is responsible for parsing and storing the data
  * pertaining to an 'include' XML tag within a roslaunch file.
  */
-public class IncludeTag
+public class IncludeTag extends BaseTag
 {
-	/** The file that contains this include tag. */
-	private File m_file;
-	
 	/** The included LaunchFile. */
 	private LaunchFile m_launchFile;
 	/** The namespace for this include tag. */
 	private String m_ns;
 	/** The value of the clear params tag. */
 	private boolean m_clearParams;
-	
+
 	/** The map of args defined in this include's scope. */
 	private Map<String, String> m_args;
 	/** The map of env variables defined in this include's scope. */
 	private Map<String, String> m_env;
 	/** The map of remap tags defined in this include's scope. */
 	private Map<String, String> m_remaps;
-	
-	/** The value of the if attribute for this include tag. */
-	private boolean m_if;
-	/** The value of the unless attribute for this include tag. */
-	private boolean m_unless;
-	
+
 	/** Set of launch file names that are direct parents of this LaunchFile. */
 	private Set<String> m_parentFilenames;
-	
+
 	/** The list of attributes supported by this tag. */
 	private static final Attribute[] SUPPORTED_ATTRIBUTES = new Attribute[]{
 		Attribute.File,
 		Attribute.Clear_Params,
-		Attribute.If,
-		Attribute.Unless,
 	};
-	
+
 	/**
 	 * Constructor
 	 *
@@ -65,7 +54,7 @@ public class IncludeTag
 	 * @param remaps is the Map of remap tags defined in this scope
 	 * @param parentNs is the parent namespace of the include
 	 * @param parentFilenames is the Set of filenames that are direct parents
-	 *        of this include  
+	 *        of this include
 	 * @throws a RuntimeException if the 'file' attribute is not defined
 	 * @throws a RuntimeException if the given 'file' attribute is a
 	 *         missing/invalid file
@@ -82,19 +71,17 @@ public class IncludeTag
 			final Map<String, String> remaps,
 			final String parentNs,
 			final Set<String> parentFilenames)
-	{		
-		// Check for unknown attributes 
-		Util.checkForUnknownAttributes(parentFile, include, SUPPORTED_ATTRIBUTES);
-				
+	{
+		super(parentFile, include, argMap, SUPPORTED_ATTRIBUTES);
+
 		// Add the direct parent to the set
 		m_parentFilenames = new HashSet<String>(parentFilenames);
 		m_parentFilenames.add(parentFile.getAbsolutePath());
-		
-		m_file = parentFile;
+
 		m_args = new HashMap<String, String>(argMap);
 		m_env = new HashMap<String, String>(env);  // Store incoming environment
 		m_remaps = new HashMap<String, String>(remaps);
-		
+
 		// Include tags may have the following attributes:
 		//    file -- required
 		//    ns  -- optional
@@ -102,31 +89,31 @@ public class IncludeTag
 		if (!include.hasAttribute(Attribute.File.val())) {
 			throw new RuntimeException("Invalid <include> tag: missing 'file' attribute");
 		}
-		
+
 		String file = include.getAttribute(Attribute.File.val());
-		
+
 		// Resolve any and all substitution args in the filename
 		file = SubstitutionArgs.resolve(file, argMap);
-		
+
 		// Make sure the include file actually exists
 		if (!includeExists(file)) {
 			throw new RuntimeException("Invalid <include> tag: No such file or directory: " + file);
 		}
-			
+
 		m_ns = RosUtil.addNamespace(include, parentNs, argMap);
-		
+
 		// Grab the clear params attribute
 		m_clearParams = RosUtil.getBoolAttribute(
 				include, Attribute.Clear_Params.val(), false, true, argMap);
-		
+
 		// Make sure ns is specified when using clear_params
 		if (m_clearParams && !include.hasAttribute(Attribute.Ns.val())) {
 			throw new RuntimeException("'ns' attribute must be set in order to use 'clear_params'");
 		}
-		
+
 		// Parse all of the child tags
-		parseChildren(include);		
-		
+		parseChildren(include);
+
 		// Make sure the file exists before trying to load it
 		File fd = new File(file);
 		if (!fd.exists() || !fd.isFile())
@@ -134,23 +121,23 @@ public class IncludeTag
 			throw new RuntimeException(
 				"Invalid <include> tag: No such file or directory: " + file);
 		}
-		
+
 		// Check if the launch file being included is already one of
 		// our own ancestors (i.e., if there is a cycle in the launch graph)
 		if (m_parentFilenames.contains(file))
 		{
 			String msg = "ERROR: there is a cycle in the launch graph.\n";
-			msg += "The file [" + m_file.getAbsolutePath() + "] includes one ";
+			msg += "The file [" + m_parentFile.getAbsolutePath() + "] includes one ";
 			msg += "of its ancestors [" + file + "]";
 			throw new RuntimeException(msg);
 		}
-		
+
 		// Load the included file as a LaunchFile object and pass to
 		// it the current args and environment
 		m_launchFile = new LaunchFile(fd, m_args, m_env, m_remaps);
 		m_launchFile.setParents(m_parentFilenames);  // Pass parents to our children
 		m_launchFile.setNamespace(m_ns);  // Pass our namespace to our children
-		
+
 		// Attempt to parse the file
 		try {
 			m_launchFile.parseFile();
@@ -159,7 +146,7 @@ public class IncludeTag
 			throw new RuntimeException(
 				"Invalid <include> tag: [" + fd.getAbsolutePath() + "]: " + e.getMessage());
 		}
-		
+
 		// Cannot specify both if and unless attributes
 		if (include.hasAttribute(Attribute.If.val()) &&
 			include.hasAttribute(Attribute.Unless.val()))
@@ -167,13 +154,13 @@ public class IncludeTag
 			throw new RuntimeException(
 				"Invalid <include> tag: cannot set both 'if' and 'unless' on the same tag");
 		}
-		
+
 		// If will default to 'true' if unspecified, and unless will default to 'false'
 		// if unspecified. Which both equate to being enabled
 		m_if = RosUtil.getBoolAttribute(include, Attribute.If.val(), true, false, argMap);
 		m_unless = RosUtil.getBoolAttribute(include, Attribute.Unless.val(), false, false, argMap);
 	}
-		
+
 	/**
 	 * Get the LaunchFile that was included by this include tag.
 	 *
@@ -183,7 +170,7 @@ public class IncludeTag
 	{
 		return m_launchFile;
 	}
-	
+
 	/**
 	 * Get the namespace for this include tag.
 	 *
@@ -193,7 +180,7 @@ public class IncludeTag
 	{
 		return m_ns;
 	}
-	
+
 	/**
 	 * Get the value of the clear params attribute for this include tag.
 	 *
@@ -203,19 +190,7 @@ public class IncludeTag
 	{
 		return m_clearParams;
 	}
-	
-	/**
-	 * Determine if this include tag is enabled or not based on the
-	 * if/unless attributes.
-	 *
-	 * @return true if enabled, false otherwise
-	 */
-	public boolean isEnabled()
-	{
-		// Both must evaluate to true in order to be enabled
-		return (m_if && !m_unless);
-	}
-	
+
 	/**
 	 * Determine if the given include file exists.
 	 *
@@ -225,19 +200,19 @@ public class IncludeTag
 	private boolean includeExists(final String filename)
 	{
 		String temp = filename;
-		
+
 		// Handle the linux tilde to the home directory so that we have
 		// an absolute path (otherwise java will consider it to be a relative
 		// path from wherever the executable is called)
 		temp = temp.replaceFirst("^~", System.getProperty("user.home"));
-		
+
 		// Attempt to open the file
 		File f = new File(temp);
-		
+
 		// Log an error if the file does not exist, or is not a file
 		return (f.exists() && f.isFile());
 	}
-	
+
 	/**
 	 * Parse the child tags for the include
 	 *
@@ -250,23 +225,27 @@ public class IncludeTag
 		{
 			Node node = children.item(index);
 			String childTag = node.getNodeName();
-			
+
 			// Ignore #comment and #text tags, all tags we're interested in
 			// should be element nodes
 			if (!childTag.startsWith("#") && node.getNodeType() == Node.ELEMENT_NODE)
 			{
 				Element child = (Element)node;
-				
+
 				// Handle all possible child tags
 				if (childTag.compareTo(Tag.Arg.val()) == 0)
 				{
-					ArgTag arg = new ArgTag(m_file, child, m_args);
-					m_args.put(arg.getName(), arg.getValue());
+					ArgTag arg = new ArgTag(m_parentFile, child, m_args);
+					if (arg.isEnabled()) {
+						m_args.put(arg.getName(), arg.getValue());
+					}
 				}
 				else if (childTag.compareTo(Tag.Env.val()) == 0)
 				{
-					EnvTag envTag = new EnvTag(m_file, child);
-					m_env.put(envTag.getName(), envTag.getValue());
+					EnvTag envTag = new EnvTag(m_parentFile, child, m_args);
+					if (envTag.isEnabled()) {
+						m_env.put(envTag.getName(), envTag.getValue());
+					}
 				}
 				else
 				{

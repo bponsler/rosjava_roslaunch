@@ -36,9 +36,13 @@ public class NodeManager
 	{
 		List<NodeTag> nodes = new ArrayList<NodeTag>();
 
-		for (LaunchFile launchFile : launchFiles) {
-			List<NodeTag> launchNodes = getNodes(launchFile);
-			nodes.addAll(launchNodes);
+		for (LaunchFile launchFile : launchFiles)
+		{
+			if (launchFile.isEnabled())
+			{
+				List<NodeTag> launchNodes = getNodes(launchFile);
+				nodes.addAll(launchNodes);
+			}
 		}
 
 		return nodes;
@@ -53,6 +57,9 @@ public class NodeManager
 	public static List<NodeTag> getNodes(final LaunchFile launchFile)
 	{
 		List<NodeTag> nodes = new ArrayList<NodeTag>();
+
+		// Stop if this lauch file is disabled
+		if (!launchFile.isEnabled()) return nodes;
 
 		// Add all nodes
 		for (NodeTag node : launchFile.getNodes())
@@ -114,24 +121,27 @@ public class NodeManager
 
 		for (NodeTag node : nodes)
 		{
-			String namespace = node.getNamespace();
+			if (node.isEnabled())
+			{
+				String namespace = node.getNamespace();
 
-			// Convert relative namespaces to global
-			if (!namespace.startsWith("/")) {
-				namespace = "/" + namespace;
+				// Convert relative namespaces to global
+				if (!namespace.startsWith("/")) {
+					namespace = "/" + namespace;
+				}
+
+				// Grab the current list of nodes for this namespace, and
+				// handle the case where there aren't any yet
+				List<NodeTag> namespaceNodes = namespaceMap.get(namespace);
+				if (namespaceNodes == null) {
+					namespaceNodes = new ArrayList<NodeTag>();
+				}
+
+				// Add the node to the namespace, and store the
+				// new list in the map
+				namespaceNodes.add(node);
+				namespaceMap.put(namespace, namespaceNodes);
 			}
-
-			// Grab the current list of nodes for this namespace, and
-			// handle the case where there aren't any yet
-			List<NodeTag> namespaceNodes = namespaceMap.get(namespace);
-			if (namespaceNodes == null) {
-				namespaceNodes = new ArrayList<NodeTag>();
-			}
-
-			// Add the node to the namespace, and store the
-			// new list in the map
-			namespaceNodes.add(node);
-			namespaceMap.put(namespace, namespaceNodes);
 		}
 
 		return namespaceMap;
@@ -140,6 +150,8 @@ public class NodeManager
 	/**
 	 * Print each of the NodeTags defined for a each known namespace
 	 * to the screen.
+	 *
+	 * Note this assumes all nodes in the map are enabled.
 	 *
 	 * @param namespaceMap the NodeTag namespace Map
 	 */

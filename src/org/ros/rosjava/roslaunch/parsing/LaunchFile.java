@@ -13,7 +13,6 @@ import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
-
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
@@ -22,7 +21,7 @@ import org.w3c.dom.NodeList;
  *
  * This class is responsible for parsing and storing the data
  * pertaining to a launch file. This includes parsing all:
- * 
+ *
  *     - include tags
  *     - node tags
  *     - group tags
@@ -41,7 +40,7 @@ public class LaunchFile
 	private final String m_filename;
 	/** The namespace for this launch file. */
 	private String m_ns;
-	
+
 	/** The List of arg tags defined in this launch file. */
 	private List<ArgTag> m_args;
 	/** The Map of args defined in the scope of this launch file. */
@@ -64,10 +63,21 @@ public class LaunchFile
 	private List<MachineTag> m_machines;
 	/** the List of Test nodes defined by this launch file. */
 	private List<TestTag> m_tests;
-	
+
+	/** Whether or not the launch tag is enabled based on the if/unless attributes. */
+	private boolean m_enabled;
+	/** The deprecated warning for this launch file. */
+	private String m_deprecated;
+
 	/** Set of launch file names that are direct parents of this LaunchFile. */
 	private Set<String> m_parentFilenames;
-	
+
+	/** The list of attributes supported by the launch tag. */
+	private static final Attribute[] SUPPORTED_ATTRIBUTES = new Attribute[]{
+		Attribute.Deprecated,
+		Attribute.Filename,
+	};
+
 	/**
 	 * Constructor
 	 *
@@ -80,7 +90,10 @@ public class LaunchFile
 		m_file = file;
 		m_filename = (file != null) ? m_file.getAbsolutePath() : null;
 		m_ns = "";
-		
+
+		m_enabled = true;
+		m_deprecated = "";  // Not deprecated
+
 		m_args = new ArrayList<ArgTag>();
 		m_argMap = new HashMap<String, String>();
 		m_env = new HashMap<String, String>();
@@ -94,7 +107,7 @@ public class LaunchFile
 		m_tests = new ArrayList<TestTag>();
 		m_parentFilenames = new HashSet<String>();
 	}
-		
+
 	/**
 	 * Constructor
 	 *
@@ -112,12 +125,12 @@ public class LaunchFile
 			final Map<String, String> remaps)
 	{
 		this(file);
-		
+
 		m_argMap = new HashMap<String, String>(args);
 		m_env = new HashMap<String, String>(env);
 		m_remaps = new HashMap<String, String>(remaps);
 	}
-	
+
 	/**
 	 * Get the name of this launch file (e.g., the basename of
 	 * the file, my_launch.launch)
@@ -133,7 +146,7 @@ public class LaunchFile
 			return "";
 		}
 	}
-	
+
 	/**
 	 * Get the filename where this LaunchFile is stored.
 	 *
@@ -143,7 +156,27 @@ public class LaunchFile
 	{
 		return m_filename;
 	}
-	
+
+	/**
+	 * Determine if this LaunchFile is enabled or not.
+	 *
+	 * @return true if it is enabled, false otherwise
+	 */
+	public boolean isEnabled()
+	{
+		return m_enabled;
+	}
+
+	/**
+	 * Get the deprecated value, or an empty string if none is defined.
+	 *
+	 * @return the deprecated value
+	 */
+	public String getDeprecated()
+	{
+		return m_deprecated;
+	}
+
 	/**
 	 * Add the give Map of args defined to the scope of this LaunchFile.
 	 *
@@ -153,7 +186,7 @@ public class LaunchFile
 	{
 		m_argMap.putAll(args);
 	}
-	
+
 	/**
 	 * Set the namespace for this LaunchFile.
 	 *
@@ -163,7 +196,7 @@ public class LaunchFile
 	{
 		m_ns = ns;
 	}
-	
+
 	/**
 	 * Set the file names that are direct parents of this launch file.
 	 *
@@ -173,7 +206,7 @@ public class LaunchFile
 	{
 		m_parentFilenames = parentFilenames;
 	}
-	
+
 	/**
 	 * Get the List of IncludeTags defined by this LaunchFile.
 	 *
@@ -183,7 +216,7 @@ public class LaunchFile
 	{
 		return m_includes;
 	}
-	
+
 	/**
 	 * Get the List of NodeTags defined by this LaunchFile.
 	 *
@@ -193,7 +226,7 @@ public class LaunchFile
 	{
 		return m_nodes;
 	}
-	
+
 	/**
 	 * Get the List of GroupTags defined by this LaunchFile.
 	 *
@@ -203,7 +236,7 @@ public class LaunchFile
 	{
 		return m_groups;
 	}
-	
+
 	/**
 	 * Get the List of ParamTags defined by this LaunchFile.
 	 *
@@ -213,7 +246,7 @@ public class LaunchFile
 	{
 		return m_params;
 	}
-	
+
 	/**
 	 * Get the List of RosParamTags defined by this LaunchFile.
 	 *
@@ -223,7 +256,7 @@ public class LaunchFile
 	{
 		return m_rosParams;
 	}
-	
+
 	/**
 	 * Get the List of MachineTags defined by this LaunchFile.
 	 *
@@ -233,7 +266,7 @@ public class LaunchFile
 	{
 		return m_machines;
 	}
-	
+
 	/**
 	 * Get the List of ArgTags defined by this LaunchFile.
 	 *
@@ -243,50 +276,50 @@ public class LaunchFile
 	{
 		return m_args;
 	}
-	
+
 	/**
 	 * Print all of the nodes defined in the launch file tree.
 	 */
 	public void printNodes()
-	{	
+	{
 		for (IncludeTag include : m_includes)
 		{
 			if (include.isEnabled()) {
 				include.getLaunchFile().printNodes();
 			}
 		}
-		
+
 		for (GroupTag group : m_groups)
 		{
 			if (group.isEnabled()) {
 				group.getLaunchFile().printNodes();
 			}
 		}
-		
+
 		for (NodeTag node : m_nodes)
 		{
 			if (node.isEnabled()) {
 				System.out.println(node.getResolvedName());
-			}	
+			}
 		}
 	}
-	
+
 	/**
 	 * Print all of the files defined in this launch file tree.
 	 */
 	public void printFiles()
-	{		
+	{
 		if (m_filename != null) {
 			System.out.println(m_filename);
 		}
-		
+
 		for (IncludeTag include : m_includes)
 		{
 			if (include.isEnabled()) {
 				include.getLaunchFile().printFiles();
 			}
 		}
-		
+
 		for (GroupTag group : m_groups)
 		{
 			if (group.isEnabled()) {
@@ -294,7 +327,7 @@ public class LaunchFile
 			}
 		}
 	}
-	
+
 	/**
 	 * Find a NodeTag within this launch file tree by its fully resolved name.
 	 *
@@ -312,7 +345,7 @@ public class LaunchFile
 				}
 			}
 		}
-		
+
 		for (IncludeTag include : m_includes)
 		{
 			if (include.isEnabled())
@@ -323,7 +356,7 @@ public class LaunchFile
 				}
 			}
 		}
-		
+
 		for (GroupTag group : m_groups)
 		{
 			if (group.isEnabled())
@@ -334,13 +367,13 @@ public class LaunchFile
 				}
 			}
 		}
-		
+
 		return null;
 	}
-	
+
 	/**
 	 * Parse the LaunchFile.
-	 * 
+	 *
 	 * @throws a RuntimeException if an missing/invalid file is given
 	 * @throws a RuntimeException if parsing fails
 	 */
@@ -357,7 +390,7 @@ public class LaunchFile
 		{
 			throw new RuntimeException("ERROR: failed to parse launch file: " + m_filename);
 		}
-		
+
 		if (doc != null)
 		{
 			Element launch = doc.getDocumentElement();
@@ -366,12 +399,40 @@ public class LaunchFile
 				throw new RuntimeException(
 						"Invalid roslaunch XML syntax: no root <" + Tag.Launch.val() + "> tag");
 			}
-			
+
+			// Parse all attributes
+			parseAttributes(launch);
+
 			// Parse all children
 			parseChildren(launch);
 		}
 	}
-	
+
+	/**
+	 * Parse all of the XML attributes for this launch tag.
+	 *
+	 * @param launch the XML Element for this launch tag
+	 */
+	public void parseAttributes(final Element launch)
+	{
+		// Create a base tag to parse the base tag attributes
+		BaseTag tag = new BaseTag(m_file, launch, m_argMap, SUPPORTED_ATTRIBUTES);
+
+		// Store whether or not the launch tag is enabled
+		// NOTE: roslaunch does not honor the if/unless attributes of the
+		//       launch tag, although it parses them correctly. Here we
+		//       are going to honor those values
+		m_enabled = tag.isEnabled();
+
+		// Parse the deprecated attribute
+		m_deprecated = "";  // Not deprecated
+		if (launch.hasAttribute(Attribute.Deprecated.val()))
+		{
+			// NOTE: The deprecated string does not resolve arguments
+			m_deprecated = launch.getAttribute(Attribute.Deprecated.val());
+		}
+	}
+
 	/**
 	 * Parse all of the child XML tags for this LaunchFile.
 	 *
@@ -385,30 +446,38 @@ public class LaunchFile
 		{
 			Node node = children.item(index);
 			String childTag = node.getNodeName();
-			
+
 			// Ignore #comment and #text tags, all tags we're interested in
 			// should be element nodes
 			if (!childTag.startsWith("#") && node.getNodeType() == Node.ELEMENT_NODE)
 			{
 				Element child = (Element)node;
-				
+
 				if (childTag.compareTo(Tag.Arg.val()) == 0)
 				{
 					ArgTag arg = new ArgTag(
 							m_file, child, m_argMap);
-					m_args.add(arg);
-					m_argMap.put(arg.getName(), arg.getValue());
+					if (arg.isEnabled())
+					{
+						m_args.add(arg);
+						m_argMap.put(arg.getName(), arg.getValue());
+					}
 				}
 				else if (childTag.compareTo(Tag.Env.val()) == 0)
 				{
-					EnvTag env = new EnvTag(m_file, child);
-					m_env.put(env.getName(), env.getValue());
+					EnvTag env = new EnvTag(
+							m_file, child, m_argMap);
+					if (env.isEnabled()) {
+						m_env.put(env.getName(), env.getValue());
+					}
 				}
 				else if (childTag.compareTo(Tag.Group.val()) == 0)
 				{
 					GroupTag group = new GroupTag(
 							m_file, child, m_argMap, m_env, m_remaps, m_ns);
-					m_groups.add(group);
+					if (group.isEnabled()) {
+						m_groups.add(group);
+					}
 				}
 				else if (childTag.compareTo(Tag.Include.val()) == 0)
 				{
@@ -420,48 +489,62 @@ public class LaunchFile
 							m_remaps,
 							m_ns,
 							m_parentFilenames);
-					m_includes.add(include);
+					if (include.isEnabled()) {
+						m_includes.add(include);
+					}
 				}
 				else if (childTag.compareTo(Tag.Machine.val()) == 0)
 				{
 					MachineTag machine = new MachineTag(
 							m_file, child, m_argMap);
-					m_machines.add(machine);
+					if (machine.isEnabled()) {
+						m_machines.add(machine);
+					}
 				}
 				else if (childTag.compareTo(Tag.Node.val()) == 0)
 				{
 					NodeTag nodeTag = new NodeTag(
 							m_file, child, m_argMap, m_env, m_remaps, m_ns);
-					m_nodes.add(nodeTag);
+					if (nodeTag.isEnabled()) {
+						m_nodes.add(nodeTag);
+					}
 				}
 				else if (childTag.compareTo(Tag.Param.val()) == 0)
 				{
 					ParamTag param = new ParamTag(
 							m_file, child, m_argMap, m_ns);
-					m_params.add(param);
+					if (param.isEnabled()) {
+						m_params.add(param);
+					}
 				}
 				else if (childTag.compareTo(Tag.Remap.val()) == 0)
 				{
 					RemapTag remap = new RemapTag(
 							m_file, child, m_argMap);
-					m_remaps.put(remap.getFrom(), remap.getTo());
+					if (remap.isEnabled()) {
+						m_remaps.put(remap.getFrom(), remap.getTo());
+					}
 				}
 				else if (childTag.compareTo(Tag.RosParam.val()) == 0)
 				{
-					RosParamTag rosparam = new RosParamTag(
+					RosParamTag rosParam = new RosParamTag(
 							m_file, child, m_argMap, m_ns);
-					m_rosParams.add(rosparam);
+					if (rosParam.isEnabled()) {
+						m_rosParams.add(rosParam);
+					}
 				}
 				else if (childTag.compareTo(Tag.Test.val()) == 0)
 				{
 					TestTag test = new TestTag(
 							m_file, child, m_argMap, m_env, m_ns);
-					m_tests.add(test);
+					if (test.isEnabled()) {
+						m_tests.add(test);
+					}
 				}
 				else {
 					System.out.println("WARNING: unknown tag: [" + childTag + "]");
 				}
 			}
 		}
-	}	
+	}
 }

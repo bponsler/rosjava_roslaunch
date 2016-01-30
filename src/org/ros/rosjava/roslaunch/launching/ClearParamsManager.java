@@ -23,37 +23,40 @@ public class ClearParamsManager
 	public static List<String> getClearParams(final List<LaunchFile> launchFiles)
 	{
 		List<String> clearParams = new ArrayList<String>();
-		
+
 		// Get clear params for the entire set of launch files
 		for (LaunchFile launchFile : launchFiles)
 		{
-			List<String> launchParams = getClearParams(launchFile);
-			clearParams.addAll(launchParams);
+			if (launchFile.isEnabled())
+			{
+				List<String> launchParams = getClearParams(launchFile);
+				clearParams.addAll(launchParams);
+			}
 		}
-		
+
 		return clearParams;
 	}
-	
+
 	public static List<String> getClearParams(final LaunchFile launchFile)
 	{
 		List<String> clearParams = new ArrayList<String>();
-		
+
+		// Stop if this is a disabled launch file
+		if (!launchFile.isEnabled()) return clearParams;
+
 		// Check for clear params in all nodes
 		for (NodeTag node : launchFile.getNodes())
 		{
-			if (node.isEnabled())
+			if (node.isEnabled() && node.getClearParams())
 			{
-				if (node.getClearParams())
-				{
-					// Add the resolved name of the node
-					// Note: the NodeTag enforces the constraint that the
-					//       name must be defined when using clear params
-					String resolvedName = node.getResolvedName();
-					clearParams.add(RosUtil.makeGlobalNamespace(resolvedName));
-				}
+				// Add the resolved name of the node
+				// Note: the NodeTag enforces the constraint that the
+				//       name must be defined when using clear params
+				String resolvedName = node.getResolvedName();
+				clearParams.add(RosUtil.makeGlobalNamespace(resolvedName));
 			}
 		}
-		
+
 		// Check for clear params in all groups
 		for (GroupTag group : launchFile.getGroups())
 		{
@@ -67,13 +70,13 @@ public class ClearParamsManager
 					String ns = group.getNamespace();
 					clearParams.add(RosUtil.makeGlobalNamespace(ns));
 				}
-				
+
 				// Recursively get clear params from the group
 				List<String> groupParams = getClearParams(group.getLaunchFile());
 				clearParams.addAll(groupParams);
 			}
 		}
-		
+
 		// Check for clear params in all includes
 		for (IncludeTag include : launchFile.getIncludes())
 		{
@@ -87,16 +90,16 @@ public class ClearParamsManager
 					String ns = include.getNamespace();
 					clearParams.add(RosUtil.makeGlobalNamespace(ns));
 				}
-				
+
 				// Recursively get clear params from the included launch file
 				List<String> includeParams = getClearParams(include.getLaunchFile());
 				clearParams.addAll(includeParams);
 			}
 		}
-		
+
 		return clearParams;
 	}
-	
+
 	/**
 	 * Print the List of namespaces to clear to the screen.
 	 *
@@ -107,24 +110,24 @@ public class ClearParamsManager
 		if (clearParams.size() > 0)
 		{
 			System.out.println("CLEAR PARAMETERS");
-			
+
 			for (String namespace : clearParams) {
 				System.out.println(" * " + namespace);
-			}	
-			
+			}
+
 			System.out.println("");  // Space between next section
 		}
 	}
-	
+
 	public static List<String> unifyClearParams(final List<String> clearParams)
 	{
 		List<String> unifiedParams = new ArrayList<String>();
-		
+
 		// Sort the set of namespaces by length of namespace in descending order
 		// this reduces the number of comparisons we need to make
 		List<String> sortedParams = new ArrayList<String>(clearParams);
 		Collections.sort(sortedParams, new StringLengthListComparator());
-		
+
 		// Iterate over all of the namespaces in sorted order to generate the list
 		// of unified namespaces to clear, which reduces the namespaces to the
 		// shortest ancestor namespace that is contained in the list, e.g.,
@@ -134,12 +137,12 @@ public class ClearParamsManager
 		for (int i = 0; i < sortedParams.size(); ++i)
 		{
 			String paramI = sortedParams.get(i);
-			
+
 			String shortestPrefix = paramI;  // Assume current is the best match
 			for (int j = i; j < sortedParams.size(); ++j)
 			{
 				String paramJ = sortedParams.get(j);
-				
+
 				// If the second param (j) is a prefix of the first param (i) then
 				// it a parent namespace (or identical). If it is also shorter
 				// than our current best prefix (which it is guaranteed to be at
@@ -150,16 +153,16 @@ public class ClearParamsManager
 					shortestPrefix = paramJ;  // Found a new best match
 				}
 			}
-			
+
 			// Only add the namespace once
 			if (!unifiedParams.contains(shortestPrefix)) {
 				unifiedParams.add(shortestPrefix);
 			}
 		}
-				
+
 		return unifiedParams;
 	}
-	
+
 	/**
 	 * Clear the given List of namespaces.
 	 *
@@ -171,7 +174,7 @@ public class ClearParamsManager
 			final String uri)
 	{
 		RosXmlRpcClient client = new RosXmlRpcClient(uri);
-		
+
 		for (String namespace : clearParams)
 		{
 			try {

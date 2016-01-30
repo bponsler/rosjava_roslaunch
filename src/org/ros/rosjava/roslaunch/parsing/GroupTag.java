@@ -5,7 +5,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.ros.rosjava.roslaunch.util.RosUtil;
-import org.ros.rosjava.roslaunch.util.Util;
 import org.w3c.dom.Element;
 
 /**
@@ -14,36 +13,30 @@ import org.w3c.dom.Element;
  * This class is responsible for parsing and storing the data
  * contained within a "group" XML tag in roslaunch files.
  */
-public class GroupTag
+public class GroupTag extends BaseTag
 {
 	/** The namespace for the group. */
 	private String m_ns;
 	/** The value of clear params attribute. */
 	private boolean m_clearParams;
-	
-	/** The value of the if attribute. */
-	private boolean m_if;
-	/** The value of the unless attribute. */
-	private boolean m_unless;
+
 	/** The internals of the group parsed as a separate launch file. */
 	private LaunchFile m_launchFile;
-	
+
 	/** The map of remap tags defined by the group. */
 	private Map<String, String> m_remaps;
-	
+
 	/** The list of attributes supported by this tag. */
 	private static final Attribute[] SUPPORTED_ATTRIBUTES = new Attribute[]{
         Attribute.Ns,
 		Attribute.Clear_Params,
-		Attribute.If,
-		Attribute.Unless,
 	};
-	
+
 	/**
 	 * Constructor
 	 *
 	 * Create a GroupTag object from XML.
-	 * 
+	 *
 	 * @param parentFile the File that contains this group
 	 * @param argMap the current Map of arg values for resolving substitution args
 	 * @param remaps the current Map of defined remap tags in this scope
@@ -58,24 +51,23 @@ public class GroupTag
 			final Map<String, String> remaps,
 			final String parentNs)
 	{
-		// Check for unknown attributes 
-		Util.checkForUnknownAttributes(parentFile, group, SUPPORTED_ATTRIBUTES);
-		
+		super(parentFile, group, argMap, SUPPORTED_ATTRIBUTES);
+
 		m_remaps = new HashMap<String, String>(remaps);
-		
+
 		// Get the optional namespace attribute
 		m_ns = RosUtil.addNamespace(group, parentNs, argMap);
-		
+
 		// Get the clear params attribute
 		m_clearParams = RosUtil.getBoolAttribute(
 				group, Attribute.Clear_Params.val(), false, true, argMap);
-		
+
 		// NS must be specified if trying to use clear params
 		if (m_clearParams && !group.hasAttribute(Attribute.Ns.val())) {
 			throw new RuntimeException(
 				"Invalid <group> tag: the 'ns' attribute must be set in order to use clear_params");
 		}
-		
+
 		// Cannot specify both if and unless attributes
 		if (group.hasAttribute(Attribute.If.val()) &&
 			group.hasAttribute(Attribute.Unless.val()))
@@ -83,19 +75,19 @@ public class GroupTag
 			throw new RuntimeException(
 				"Invalid <group>: cannot set both 'if' and 'unless' on the same tag");
 		}
-		
+
 		// If will default to 'true' if unspecified, and unless will default to 'false'
 		// if unspecified. Which both equate to being enabled
 		m_if = RosUtil.getBoolAttribute(group, Attribute.If.val(), true, false, argMap);
-		m_unless = RosUtil.getBoolAttribute(group, Attribute.Unless.val(), false, false, argMap);		
-		
+		m_unless = RosUtil.getBoolAttribute(group, Attribute.Unless.val(), false, false, argMap);
+
 		// The rest of the group is basically a launch file, so
 		// create a launch file and parse it the same way
 		m_launchFile = new LaunchFile(parentFile, argMap, env, m_remaps);
 		m_launchFile.setNamespace(m_ns);  // Pass namespace down to children
 		m_launchFile.parseChildren(group);
 	}
-	
+
 	/**
 	 * Get the namespace for this group
 	 *
@@ -105,9 +97,9 @@ public class GroupTag
 	{
 		return m_ns;
 	}
-	
+
 	/**
-	 * Get the value of the clear params attribute for this group. 
+	 * Get the value of the clear params attribute for this group.
 	 *
 	 * @return the clear params value
 	 */
@@ -115,18 +107,7 @@ public class GroupTag
 	{
 		return m_clearParams;
 	}
-	
-	/**
-	 * Determine if this group is enabled or disabled by if/unless tags.
-	 *
-	 * @return true if this group is enabled, false otherwise
-	 */
-	public boolean isEnabled()
-	{
-		// Both must evaluate to true in order to be enabled
-		return (m_if && !m_unless);
-	}
-	
+
 	/**
 	 * Get the launch file that represents the internals of the group.
 	 *

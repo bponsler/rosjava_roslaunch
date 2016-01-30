@@ -7,7 +7,7 @@ package org.ros.rosjava.roslaunch.parsing;
  * that can be contained in launch file XML code.
  */
 public enum Attribute
-{	
+{
 	Address,
 	Args,
 	BinFile,
@@ -15,9 +15,11 @@ public enum Attribute
 	Command,
 	Cwd,
 	Default,
+	Deprecated,
 	Doc,
 	Env_Loader(true),
 	File,
+	Filename,
 	From,
 	If,
 	Launch_Prefix(true),
@@ -46,29 +48,29 @@ public enum Attribute
 
 	/** The XML text value for the Attribute. */
 	private String m_val;
-	
+
 	/**
 	 * Constructor
 	 *
 	 * Create a Attribute object that uses underscores (default)
 	 * or dashes. When true the useDashes argument will convert the
 	 * underscores in the Attribute name to be dashes.
-	 * 
+	 *
 	 * @param useDashes is true if the Attribute uses dashes instead of underscores
 	 */
 	private Attribute(final boolean useDashes)
 	{
 		String val = this.name().toLowerCase();
-		
+
 		// If the attribute uses dashes instead of underscores
 		// then we need to update its value
 		if (useDashes) {
 			val = val.replace("_", "-");
 		}
-		
+
 		m_val = val;
 	}
-	
+
 	/**
 	 * Constructor
 	 *
@@ -78,10 +80,10 @@ public enum Attribute
 	{
 		this(false);  // Use underscores, not dashes
 	}
-	
+
 	/**
 	 * Get the XML text value for this Attribute.
-	 * 
+	 *
 	 * @param the XML text value for this Attribute
 	 */
 	public String val()

@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.ros.rosjava.roslaunch.util.RosUtil;
-import org.ros.rosjava.roslaunch.util.Util;
 import org.w3c.dom.Element;
 import org.yaml.snakeyaml.Yaml;
 
@@ -24,7 +23,7 @@ import org.yaml.snakeyaml.Yaml;
  * This class is responsible for parsing and storing the data
  * associated with a 'rosparam' XML tag within a roslaunch file.
  */
-public class RosParamTag
+public class RosParamTag extends BaseTag
 {
 	/** The command attribute for this rosparam tag. */
 	private String m_command;
@@ -40,10 +39,10 @@ public class RosParamTag
 	private Object m_yamlObj;
 	/** The YAML content for this rosparam data. */
 	private String m_yamlContent;
-	
+
 	/** The list of command types RosParamTags support. */
 	private List<String> m_supportedCommands;
-	
+
 	/** The list of attributes supported by this tag. */
 	private static final Attribute[] SUPPORTED_ATTRIBUTES = new Attribute[]{
 		Attribute.Command,
@@ -52,7 +51,7 @@ public class RosParamTag
 		Attribute.Ns,
 		Attribute.Subst_Value,
 	};
-	
+
 	/**
 	 * The Command enumeration
 	 *
@@ -66,7 +65,7 @@ public class RosParamTag
 		Delete,
 		/** The command to dump all parameters. */
 		Dump;
-		
+
 		/**
 		 * Get the XML text value for this Command.
 		 *
@@ -75,9 +74,9 @@ public class RosParamTag
 		public String val()
 		{
 			return this.name().toLowerCase();
-		} 
+		}
 	};
-	
+
 	/**
 	 * Constructor
 	 *
@@ -100,42 +99,41 @@ public class RosParamTag
 			final Map<String, String> argMap,
 			final String parentNs)
 	{
-		// Check for unknown attributes 
-		Util.checkForUnknownAttributes(parentFile, rosparam, SUPPORTED_ATTRIBUTES);
-				
+		super(parentFile, rosparam, argMap, SUPPORTED_ATTRIBUTES);
+
 		boolean isYamlDict = false;  // Assume no YAML dictionary by default
-		
+
 		// Add list of supported commands
 		m_supportedCommands = new ArrayList<String>();
 		m_supportedCommands.add(Command.Load.val());
 		m_supportedCommands.add(Command.Dump.val());
 		m_supportedCommands.add(Command.Delete.val());
-		
+
 		// command: optional: load|dump|delete
 		m_command = Command.Load.val();  // default command is load
 		if (rosparam.hasAttribute(Attribute.Command.val()))
 		{
 			m_command = rosparam.getAttribute(Attribute.Command.val());
 			m_command = SubstitutionArgs.resolve(m_command, argMap);
-			
+
 			if (!m_supportedCommands.contains(m_command))
 			{
 				throw new RuntimeException(
 					"Invalid <rosparam> tag: invalid command value: " + m_command);
 			}
 		}
-		
-		// File cannot be specified for the delete command					
+
+		// File cannot be specified for the delete command
 		if (isDeleteCommand() && rosparam.hasAttribute(Attribute.File.val()))
 		{
 			throw new RuntimeException(
 				"Invalid <rosparam> tag: the 'file' attribute is " +
 					"invalid with the 'delete' command.");
 		}
-		
+
 		// Grab the namespace
 		m_ns = RosUtil.addNamespace(rosparam, parentNs, argMap);
-		
+
 		// file (only for load or dump commands)
 		m_file = null;
 		if (isLoadCommand() || isDumpCommand())
@@ -144,11 +142,11 @@ public class RosParamTag
 			{
 				m_file = rosparam.getAttribute(Attribute.File.val());
 				m_file = SubstitutionArgs.resolve(m_file, argMap);
-				
+
 				if (isLoadCommand())
 				{
 					//// load command
-						
+
 					// Make sure the file exists
 					File f = new File(m_file);
 					if (!f.exists() || !f.isFile())
@@ -156,21 +154,21 @@ public class RosParamTag
 						throw new RuntimeException(
 							"Invalid <rosparam> tag: file does not exist: '" + m_file + "'");
 					}
-					
+
 					// Load the YAML data from the file
 					Yaml yaml = new Yaml();
-					
+
 					// Load the YAML data
 					InputStream inputStream;
 					try
 					{
 						inputStream = new FileInputStream(m_file);
-						
+
 						m_yamlObj = yaml.load(inputStream);
-						
+
 						// Determine if this is a YAML dictionary
 						isYamlDict = isYamlDict(m_yamlObj);
-						
+
 						// Store the yaml content
 						m_yamlContent = yaml.dump(m_yamlObj);
 					}
@@ -183,7 +181,7 @@ public class RosParamTag
 				else
 				{
 					//// dump command
-					
+
 					if (m_file.length() == 0)
 					{
 						// roslaunch does not throw this error, but it throws a
@@ -205,7 +203,7 @@ public class RosParamTag
 					"the 'file' attribute to be specified");
 			}
 		}
-		
+
 		// The load command is the only time the content gets parsed
 		// and it's only when the file attribute is not specified
 		// because the file attribute takes precedence over the text content
@@ -214,7 +212,7 @@ public class RosParamTag
 			// subst_value (Allows use of substitution args in the YAML text)
 			m_substValue = RosUtil.getBoolAttribute(
 					rosparam, Attribute.Subst_Value.val(), false, false, argMap);
-			
+
 			// Handle the YAML text content
 			m_yamlContent = rosparam.getTextContent();
 			if (m_yamlContent.length() > 0)
@@ -223,9 +221,9 @@ public class RosParamTag
 				if (m_substValue) {
 					m_yamlContent = SubstitutionArgs.resolve(m_yamlContent, argMap);
 				}
-				
+
 				Yaml yaml = new Yaml();
-				
+
 				try {
 					m_yamlObj = yaml.load(m_yamlContent);
 				}
@@ -235,13 +233,13 @@ public class RosParamTag
 						"Invalid <rosparam> tag: failed to parse " +
 						"YAML content: " + e.getMessage() + "\nYAML is: " + m_yamlContent);
 				}
-						
-				
+
+
 				// Determine if this is a YAML dictionary
 				isYamlDict = isYamlDict(m_yamlObj);
 			}
 		}
-		
+
 		// param (optional only if the YAML text describes a dictionary)
 		m_param = "";
 		if (rosparam.hasAttribute(Attribute.Param.val()))
@@ -252,13 +250,13 @@ public class RosParamTag
 		else if (isLoadCommand() && m_yamlContent.length() > 0 && !isYamlDict)
 		{
 			// Param must be specified for the load command when the
-			// data is a non-dictionary type 
+			// data is a non-dictionary type
 			throw new RuntimeException(
 				"Invalid <rosparam> tag: the 'param' attribute must be set " +
 				"for non-dictionary values");
 		}
 	}
-	
+
 	/**
 	 * Determine if this rosparam is loading a parameter.
 	 *
@@ -268,7 +266,7 @@ public class RosParamTag
 	{
 		return (m_command.compareTo(Command.Load.val()) == 0);
 	}
-	
+
 	/**
 	 * Determine if this rosparam is dumping all parameters.
 	 *
@@ -278,7 +276,7 @@ public class RosParamTag
 	{
 		return (m_command.compareTo(Command.Dump.val()) == 0);
 	}
-	
+
 	/**
 	 * Determine if this rosparam is deleting a parameter.
 	 *
@@ -288,7 +286,7 @@ public class RosParamTag
 	{
 		return (m_command.compareTo(Command.Delete.val()) == 0);
 	}
-	
+
 	/**
 	 * Get the fully resolved name for this rosparam.
 	 *
@@ -298,10 +296,10 @@ public class RosParamTag
 	{
 		String param = m_param;
 		if (param == null) param = "";  // Avoid null params
-		
+
 		return RosUtil.joinNamespace(m_ns, param);
 	}
-	
+
 	/**
 	 * Get the filename that contains this rosparam.
 	 *
@@ -311,7 +309,7 @@ public class RosParamTag
 	{
 		return m_file;
 	}
-	
+
 	/**
 	 * Get the namespace of this rosparam.
 	 *
@@ -321,7 +319,7 @@ public class RosParamTag
 	{
 		return m_ns;
 	}
-	
+
 	/**
 	 * Get the defined name of the rosparam.
 	 *
@@ -331,7 +329,7 @@ public class RosParamTag
 	{
 		return m_param;
 	}
-	
+
 	/**
 	 * Get the YAML content for this rosparam.
 	 *
@@ -341,7 +339,7 @@ public class RosParamTag
 	{
 		return m_yamlContent.trim();
 	}
-	
+
 	/**
 	 * Get the YAML object for this rosparam.
 	 *

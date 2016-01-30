@@ -37,9 +37,13 @@ public class RosParamManager
 	{
 		List<RosParamTag> rosParams = new ArrayList<RosParamTag>();
 
-		for (LaunchFile launchFile : launchFiles) {
-			List<RosParamTag> launchParams = getRosParams(launchFile);
-			rosParams.addAll(launchParams);
+		for (LaunchFile launchFile : launchFiles)
+		{
+			if (launchFile.isEnabled())
+			{
+				List<RosParamTag> launchParams = getRosParams(launchFile);
+				rosParams.addAll(launchParams);
+			}
 		}
 
 		return rosParams;
@@ -55,14 +59,31 @@ public class RosParamManager
 	{
 		List<RosParamTag> rosParams = new ArrayList<RosParamTag>();
 
+		// Stop if this launch file is disabled
+		if (!launchFile.isEnabled()) return rosParams;
+
 		// Add all rosparams defined in the launch tree
-		for (RosParamTag param : launchFile.getRosParams()) {
-			rosParams.add(param);
+		for (RosParamTag rosParam : launchFile.getRosParams())
+		{
+			// Only get enabled rosparams
+			if (rosParam.isEnabled()) {
+				rosParams.add(rosParam);
+			}
 		}
 
 		// Add all rosparams defined by nodes
-		for (NodeTag node : launchFile.getNodes()) {
-			rosParams.addAll(node.getRosParams());
+		for (NodeTag node : launchFile.getNodes())
+		{
+			if (node.isEnabled())
+			{
+				for (RosParamTag rosParam : node.getRosParams())
+				{
+					// Only get enabled ros params
+					if (rosParam.isEnabled()) {
+						rosParams.add(rosParam);
+					}
+				}
+			}
 		}
 
 		// Add all rosparams defined by groups
@@ -99,8 +120,11 @@ public class RosParamManager
 	{
 		Map<String, String> loadParams = new HashMap<String, String>();
 
-		for (LaunchFile launchFile : launchFiles) {
-			getLoadRosParamsMap(launchFile, loadParams);
+		for (LaunchFile launchFile : launchFiles)
+		{
+			if (launchFile.isEnabled()) {
+				getLoadRosParamsMap(launchFile, loadParams);
+			}
 		}
 
 		return loadParams;
@@ -117,21 +141,27 @@ public class RosParamManager
 			final LaunchFile launchFile,
 			Map<String, String> loadParams)
 	{
+		// Stop if the launch file is disabled
+		if (!launchFile.isEnabled()) return;
+
 		// Add all rosparams defined in the launch tree
-		for (RosParamTag param : launchFile.getRosParams())
+		for (RosParamTag rosParam : launchFile.getRosParams())
 		{
-			if (param.isLoadCommand()) {
-				getLoadRosParam(param, loadParams);
+			if (rosParam.isEnabled() && rosParam.isLoadCommand()) {
+				getLoadRosParam(rosParam, loadParams);
 			}
 		}
 
 		// Add all rosparams defined by nodes
 		for (NodeTag node : launchFile.getNodes())
 		{
-			for (RosParamTag param : node.getRosParams())
+			if (node.isEnabled())
 			{
-				if (param.isLoadCommand()) {
-					getLoadRosParam(param, loadParams);
+				for (RosParamTag rosParam : node.getRosParams())
+				{
+					if (rosParam.isEnabled() && rosParam.isLoadCommand()) {
+						getLoadRosParam(rosParam, loadParams);
+					}
 				}
 			}
 		}
@@ -147,8 +177,7 @@ public class RosParamManager
 		// Add all rosparams defined in includes
 		for (IncludeTag include : launchFile.getIncludes())
 		{
-			if (include.isEnabled())
-			{
+			if (include.isEnabled()) {
 				getLoadRosParamsMap(include.getLaunchFile(), loadParams);
 			}
 		}
@@ -164,27 +193,30 @@ public class RosParamManager
 			final RosParamTag rosParam,
 			Map<String, String> loadParams)
 	{
-		///// must be a load command
-		String resolved = rosParam.getResolvedName();
-		Object yamlObj = rosParam.getYamlObject();
-
-		String content = rosParam.getYamlContent();
-
-		if (resolved.length() > 0 && content.length() > 0)
+		if (rosParam.isEnabled())
 		{
-			// Handle dumping dictionary parameters, which end up
-			// dumping parameters based on the layout of the dictionary
-			if (yamlObj != null && ObjectToXml.isMap(yamlObj))
+			///// must be a load command
+			String resolved = rosParam.getResolvedName();
+			Object yamlObj = rosParam.getYamlObject();
+
+			String content = rosParam.getYamlContent();
+
+			if (resolved.length() > 0 && content.length() > 0)
 			{
-				getLoadRosParamDict(
-						resolved,
-						(Map<String, Object>)yamlObj,
-						loadParams);
-				return;
-			}
-			else {
-				// Store the non-dictionary parameter
-				loadParams.put(resolved, content);
+				// Handle dumping dictionary parameters, which end up
+				// dumping parameters based on the layout of the dictionary
+				if (yamlObj != null && ObjectToXml.isMap(yamlObj))
+				{
+					getLoadRosParamDict(
+							resolved,
+							(Map<String, Object>)yamlObj,
+							loadParams);
+					return;
+				}
+				else {
+					// Store the non-dictionary parameter
+					loadParams.put(resolved, content);
+				}
 			}
 		}
 	}
@@ -268,8 +300,9 @@ public class RosParamManager
 			final List<RosParamTag> rosParams,
 			final String uri) throws Exception
 	{
-		for (RosParamTag rosParam: rosParams) {
-			if (rosParam.isLoadCommand()) {
+		for (RosParamTag rosParam: rosParams)
+		{
+			if (rosParam.isEnabled() && rosParam.isLoadCommand()) {
 				setRosParam(rosParam, uri);
 			}
 		}
@@ -279,20 +312,23 @@ public class RosParamManager
 	 * Send a request to the ROS master server to set the value of
 	 * a single RosParamTag.
 	 *
-	 * @param rosparam the RosParamTag
+	 * @param rosParam the RosParamTag
 	 * @param uri the URI to reach the ROS master server
 	 * @throws Exception if the rosparam failed to be set
 	 */
-	private static void setRosParam(final RosParamTag rosparam, final String uri) throws Exception
+	private static void setRosParam(final RosParamTag rosParam, final String uri) throws Exception
 	{
-		///// must be a load command
-		String resolved = rosparam.getResolvedName();
-		Object yamlObj = rosparam.getYamlObject();
-
-		if (resolved.length() > 0 && yamlObj != null)
+		if (rosParam.isEnabled())
 		{
-			RosXmlRpcClient client = new RosXmlRpcClient(uri);
-			client.setYamlParam(rosparam);
+			///// must be a load command
+			String resolved = rosParam.getResolvedName();
+			Object yamlObj = rosParam.getYamlObject();
+
+			if (resolved.length() > 0 && yamlObj != null)
+			{
+				RosXmlRpcClient client = new RosXmlRpcClient(uri);
+				client.setYamlParam(rosParam);
+			}
 		}
 	}
 
@@ -314,7 +350,7 @@ public class RosParamManager
 	{
 		for (RosParamTag rosParam : rosParams)
 		{
-			if (rosParam.isDeleteCommand()) {
+			if (rosParam.isEnabled() && rosParam.isDeleteCommand()) {
 				deleteRosParam(rosParam, uri);
 			}
 		}
@@ -324,30 +360,33 @@ public class RosParamManager
 	 * Send a request to the ROS master server to delete a
 	 * single RosParamTag.
 	 *
-	 * @param rosParams the RosParamTag
+	 * @param rosParam the RosParamTag to delete
 	 * @param uri the URI to reach the ROS master server
 	 */
-	private static void deleteRosParam(final RosParamTag rosparam, final String uri)
+	private static void deleteRosParam(final RosParamTag rosParam, final String uri)
 	{
-		String param = rosparam.getResolvedName();
-
-		System.out.println("running rosparam delete " + param);
-
-		RosXmlRpcClient client = new RosXmlRpcClient(uri);
-
-		try
+		if (rosParam.isEnabled())
 		{
-			// Handle the generic delete differently than
-			// normal delete params
-			if (param.compareTo("/") == 0) {
-				client.clearParam(param);
+			String param = rosParam.getResolvedName();
+
+			System.out.println("running rosparam delete " + param);
+
+			RosXmlRpcClient client = new RosXmlRpcClient(uri);
+
+			try
+			{
+				// Handle the generic delete differently than
+				// normal delete params
+				if (param.compareTo("/") == 0) {
+					client.clearParam(param);
+				}
+				else {
+					client.deleteParam(param);
+				}
 			}
-			else {
-				client.deleteParam(param);
+			catch (Exception e) {
+				System.err.println(e.getMessage());
 			}
-		}
-		catch (Exception e) {
-			System.err.println(e.getMessage());
 		}
 	}
 
@@ -369,7 +408,7 @@ public class RosParamManager
 	{
 		for (RosParamTag rosParam : rosParams)
 		{
-			if (rosParam.isDumpCommand()) {
+			if (rosParam.isEnabled() && rosParam.isDumpCommand()) {
 				dumpParam(rosParam);
 			}
 		}
@@ -382,40 +421,43 @@ public class RosParamManager
 	 */
 	public static void dumpParam(final RosParamTag rosParam)
 	{
-		String file = rosParam.getFile();
-
-		// Make sure the file exists
-		if (file != null && file.length() > 0)
+		if (rosParam.isEnabled())
 		{
-			List<String> fullCommand = new ArrayList<String>();
+			String file = rosParam.getFile();
 
-			String resolvedName = rosParam.getResolvedName();
-
-			// Create the command to dump the rosparam to the desired file
-			fullCommand.add("rosparam");
-			fullCommand.add("dump");
-			fullCommand.add(file);
-			fullCommand.add(resolvedName);
-
-			// Convert the list of command args to an array
-			String[] command = new String[fullCommand.size()];
-			fullCommand.toArray(command);
-
-			System.out.println("running rosparam dump " + file + " " + resolvedName);
-
-			Process proc;
-			try {
-				proc = Runtime.getRuntime().exec(command);
-
-				// Wait for the process to complete -- should be fast
-				proc.waitFor();
-			}
-			catch (Exception e)
+			// Make sure the file exists
+			if (file != null && file.length() > 0)
 			{
-				String msg = "ERROR: while running: rosparam dump " + file + " " + resolvedName;
-				msg += "\n" + e.getMessage();
+				List<String> fullCommand = new ArrayList<String>();
 
-				System.err.println(msg);
+				String resolvedName = rosParam.getResolvedName();
+
+				// Create the command to dump the rosparam to the desired file
+				fullCommand.add("rosparam");
+				fullCommand.add("dump");
+				fullCommand.add(file);
+				fullCommand.add(resolvedName);
+
+				// Convert the list of command args to an array
+				String[] command = new String[fullCommand.size()];
+				fullCommand.toArray(command);
+
+				System.out.println("running rosparam dump " + file + " " + resolvedName);
+
+				Process proc;
+				try {
+					proc = Runtime.getRuntime().exec(command);
+
+					// Wait for the process to complete -- should be fast
+					proc.waitFor();
+				}
+				catch (Exception e)
+				{
+					String msg = "ERROR: while running: rosparam dump " + file + " " + resolvedName;
+					msg += "\n" + e.getMessage();
+
+					System.err.println(msg);
+				}
 			}
 		}
 	}

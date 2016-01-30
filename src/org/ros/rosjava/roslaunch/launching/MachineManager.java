@@ -23,15 +23,15 @@ public class MachineManager
 {
 	/** The name of the local machine. */
 	private static String LOCAL_MACHINE = "local";
-	
+
 	/** The Map from machine name to MachineTag objects. */
 	private Map<String, MachineTag> m_machines;
 	/** The Map from duplicate machine name to singular MachineTag object. */
 	private Map<String, MachineTag> m_overrides;
-	
+
 	/** The List of InetAddresses for the local machine. */
 	private List<InetAddress> m_localIpAddresses;
-	
+
 	/**
 	 * Constructor
 	 *
@@ -41,14 +41,14 @@ public class MachineManager
 	{
 		m_machines = new HashMap<String, MachineTag>();
 		m_overrides = new HashMap<String, MachineTag>();
-		
+
 		// Add a machine to correspond to the local machine
 		addMachine(new MachineTag(LOCAL_MACHINE, "localhost"));
-		
+
 		// Create a list of local IP addresses
 		m_localIpAddresses = RosUtil.getLocalAddresses();
 	}
-	
+
 	/**
 	 * Add a machine.
 	 *
@@ -56,9 +56,12 @@ public class MachineManager
 	 */
 	public void addMachine(final MachineTag machine)
 	{
-		m_machines.put(machine.getName(), machine);
+		// Only add machines that are enabled
+		if (machine.isEnabled()) {
+			m_machines.put(machine.getName(), machine);
+		}
 	}
-	
+
 	/**
 	 * Add all the MachineTags defined in the given LaunchFiles.
 	 *
@@ -66,11 +69,14 @@ public class MachineManager
 	 */
 	public void addMachines(final List<LaunchFile> launchFiles)
 	{
-		for (LaunchFile launchFile : launchFiles) {
-			addMachines(launchFile);
+		for (LaunchFile launchFile : launchFiles)
+		{
+			if (launchFile.isEnabled()) {
+				addMachines(launchFile);
+			}
 		}
 	}
-	
+
 	/**
 	 * Add all the MachineTags defined in the given LaunchFile.
 	 *
@@ -78,11 +84,16 @@ public class MachineManager
 	 */
 	public void addMachines(final LaunchFile launchFile)
 	{
+		// Stop if this launch file is disabled
+		if (!launchFile.isEnabled()) return;
+
 		// Add all machines specified in the launch file itself
 		for (MachineTag machine : launchFile.getMachines()) {
-			addMachine(machine);
+			if (machine.isEnabled()) {
+				addMachine(machine);
+			}
 		}
-		
+
 		// Add all machines defined in any groups
 		for (GroupTag group : launchFile.getGroups())
 		{
@@ -90,7 +101,7 @@ public class MachineManager
 				addMachines(group.getLaunchFile());
 			}
 		}
-		
+
 		// Add all machines defined in any included launch files
 		for (IncludeTag include : launchFile.getIncludes())
 		{
@@ -99,7 +110,7 @@ public class MachineManager
 			}
 		}
 	}
-	
+
 	/**
 	 * Get a MachineTag by its name.
 	 *
@@ -114,7 +125,7 @@ public class MachineManager
 		if (m_overrides.containsKey(name)) {
 			return m_overrides.get(name);
 		}
-		
+
 		// If no overrides are present, check in the main map
 		// of machines for the machine
 		if (m_machines.containsKey(name)) {
@@ -124,7 +135,7 @@ public class MachineManager
 			return null;
 		}
 	}
-	
+
 	/**
 	 * Get the MachineTag for the local machine.
 	 *
@@ -134,7 +145,7 @@ public class MachineManager
 	{
 		return getMachine(LOCAL_MACHINE);
 	}
-	
+
 	/**
 	 * Determine if a MachineTag corresponds to a local machine
 	 *
@@ -145,9 +156,9 @@ public class MachineManager
 	{
 		// If the machine is not specified, then it's a local node
 		if (machine == null) return true;
-		
-		boolean isLocal = false;  // Assume not local	
-	
+
+		boolean isLocal = false;  // Assume not local
+
 		// Determine if the IP address for this machine is found
 		// in the list of local IP addresses
 		InetAddress machineAddress = machine.getInetAddress();
@@ -158,7 +169,7 @@ public class MachineManager
 				break;
 			}
 		}
-		
+
 		String username = machine.getUsername();
 		if (isLocal && username != null && username.length() > 0)
 		{
@@ -167,10 +178,10 @@ public class MachineManager
 			String localUsername = System.getProperty("user.name");
 			isLocal = (username.compareTo(localUsername) == 0);
 		}
-		
+
 		return isLocal;
 	}
-	
+
 	/**
 	 * Consolidate the known machines to override names of machines
 	 * that refer to another machine with an identical configuration.
@@ -178,24 +189,24 @@ public class MachineManager
 	public void consolidateMachines()
 	{
 		Set<String> machineNamesSet = m_machines.keySet();
-		
+
 		// Convert the set of names to an array to allow us to
 		// access elements in the set
 		String[] machineNames = new String[machineNamesSet.size()];
 		machineNamesSet.toArray(machineNames);
-		
+
 		// Iterate over all machine names
 		for (int index1 = 0; index1 < machineNames.length; ++index1)
 		{
 			// Grab the first name and machine
 			String name1 = machineNames[index1];
 			MachineTag machine1 = m_machines.get(name1);
-			
+
 			// Skip any that have already been processed
 			if (m_overrides.containsKey(name1)) {
 				continue;
 			}
-			
+
 			// Iterate over all other machines to check for duplicates of
 			// the first machine
 			for (int index2 = index1; index2 < machineNames.length; ++index2)
@@ -208,7 +219,7 @@ public class MachineManager
 				if (m_overrides.containsKey(name2)) {
 					continue;
 				}
-				
+
 				// Check if these machines are duplicates
 				if (machine1.equals(machine2))
 				{
@@ -241,7 +252,7 @@ public class MachineManager
 			}
 		}
 	}
-	
+
 	/**
 	 * Assign a MachineTag to a NodeTag. Core nodes are all defined
 	 * to be on the local machine.
@@ -254,7 +265,7 @@ public class MachineManager
 		// If the node does not specify a machine name, then
 		// it will be connected to the local machine by default
 		MachineTag machine = getLocalMachine();
-		
+
 		// Core nodes are assigned to the local machine
 		if (!isCoreNode)
 		{
@@ -263,7 +274,7 @@ public class MachineManager
 			{
 				// Use the machine defined by the node
 				machine = getMachine(machineName);
-				
+
 				// Make sure the machine is defined
 				if (machine == null)
 				{
@@ -272,7 +283,7 @@ public class MachineManager
 				}
 			}
 		}
-		
+
 		if (machine != null) {  // Just for safety
 			node.setMachine(machine);
 		}

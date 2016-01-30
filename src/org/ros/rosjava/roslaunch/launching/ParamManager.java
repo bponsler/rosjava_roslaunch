@@ -21,7 +21,7 @@ public class ParamManager
 {
 	/**
 	 * Get the List of all ParamTags defined in the given tree defined
-	 * by the List of LaunchFiles. 
+	 * by the List of LaunchFiles.
 	 *
 	 * @param launchFiles the List of LaunchFiles
 	 * @return the List of ParamTags defined within the launch file tree
@@ -29,16 +29,19 @@ public class ParamManager
 	public static List<ParamTag> getParams(final List<LaunchFile> launchFiles)
 	{
 		List<ParamTag> params = new ArrayList<ParamTag>();
-		
+
 		for (LaunchFile launchFile : launchFiles)
 		{
-			List<ParamTag> launchParams = getParams(launchFile);
-			params.addAll(launchParams);
+			if (launchFile.isEnabled())
+			{
+				List<ParamTag> launchParams = getParams(launchFile);
+				params.addAll(launchParams);
+			}
 		}
-		
+
 		return params;
 	}
-	
+
 	/**
 	 * Get the List of all ParamTags defined within the given LaunchFile.
 	 *
@@ -48,36 +51,57 @@ public class ParamManager
 	public static List<ParamTag> getParams(final LaunchFile launchFile)
 	{
 		List<ParamTag> params = new ArrayList<ParamTag>();
-		
+
+		// Stop if the launch file is disabled
+		if (!launchFile.isEnabled()) return params;
+
 		// Add all defined params
-		params.addAll(launchFile.getParameters());
-		
-		// Add params defined in all nodes
-		for (NodeTag node : launchFile.getNodes()) {
-			params.addAll(node.getParams());
+		for (ParamTag param : launchFile.getParameters())
+		{
+			// Only keep enabled params
+			if (param.isEnabled()) {
+				params.add(param);
+			}
 		}
-		
+
+		// Add params defined in all nodes
+		for (NodeTag node : launchFile.getNodes())
+		{
+			if (node.isEnabled())
+			{
+				for (ParamTag param : node.getParams())
+				{
+					// Only keep enabled params
+					if (param.isEnabled()) {
+						params.add(param);
+					}
+				}
+			}
+		}
+
 		// Add params defined in all groups
 		for (GroupTag group : launchFile.getGroups())
 		{
-			if (group.isEnabled()) {
+			if (group.isEnabled())
+			{
 				List<ParamTag> groupParams = getParams(group.getLaunchFile());
 				params.addAll(groupParams);
 			}
 		}
-		
+
 		// Add params defined from all includes
 		for (IncludeTag include : launchFile.getIncludes())
 		{
-			if (include.isEnabled()) {
+			if (include.isEnabled())
+			{
 				List<ParamTag> includeParams = getParams(include.getLaunchFile());
 				params.addAll(includeParams);
 			}
 		}
-		
+
 		return params;
 	}
-	
+
 	/**
 	 * Dump the List of ParamTags to the given Map of param name
 	 * to param value.
@@ -91,11 +115,15 @@ public class ParamManager
 	{
 		for (ParamTag param : params)
 		{
-			String value = param.getValue();			
-			paramMap.put(param.getResolvedName(), value);
+			// Only dump enabled params
+			if (param.isEnabled())
+			{
+				String value = param.getValue();
+				paramMap.put(param.getResolvedName(), value);
+			}
 		}
 	}
-	
+
 	/**
 	 * Print each of the given ParamTags to the screen.
 	 *
@@ -115,20 +143,24 @@ public class ParamManager
 	 */
 	public static void printParam(final ParamTag param)
 	{
-		String value = param.getValue();
-		
-		// Only display the first 20 characters, if the param
-		// value is very long
-		if (value.length() > 20) {
-			value = value.substring(0, 20) + "...";
+		// Only print enabled params
+		if (param.isEnabled())
+		{
+			String value = param.getValue();
+
+			// Only display the first 20 characters, if the param
+			// value is very long
+			if (value.length() > 20) {
+				value = value.substring(0, 20) + "...";
+			}
+
+			// Remove carriage returns and new lines for display purposes
+			value = value.replace("\r", "").replace("\n", "");
+
+			System.out.println(" * " + param.getResolvedName() + ": " + value);
 		}
-		
-		// Remove carriage returns and new lines for display purposes
-		value = value.replace("\r", "").replace("\n", "");
-		
-		System.out.println(" * " + param.getResolvedName() + ": " + value);
 	}
-	
+
 	/**
 	 * Send a request to the ROS master server to set each
 	 * of the given ParamTags
@@ -140,10 +172,10 @@ public class ParamManager
 	public static void setParameters(
 			final List<ParamTag> params,
 			final String uri) throws Exception
-	{		
+	{
 		for (ParamTag param : params) {
 			setParameter(param, uri);
-		}		
+		}
 	}
 
 	/**
@@ -158,8 +190,12 @@ public class ParamManager
 			final ParamTag param,
 			final String uri) throws Exception
 	{
-		// Use the XMLRPC interface to set all parameters
-		RosXmlRpcClient client = new RosXmlRpcClient(uri);
-		client.setParam(param.getResolvedName(), param.getType(), param.getValue());
+		// Only set enabled params
+		if (param.isEnabled())
+		{
+			// Use the XMLRPC interface to set all parameters
+			RosXmlRpcClient client = new RosXmlRpcClient(uri);
+			client.setParam(param.getResolvedName(), param.getType(), param.getValue());
+		}
 	}
 }
