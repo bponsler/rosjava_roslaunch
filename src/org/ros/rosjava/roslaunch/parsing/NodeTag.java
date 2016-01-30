@@ -129,7 +129,7 @@ public class NodeTag extends BaseTag
 		super(parentFile, node, argMap, SUPPORTED_ATTRIBUTES);
 
 		m_params = new ArrayList<ParamTag>();
-		m_env = new HashMap<String, String>();  // TODO: do we need to inherit?
+		m_env = new HashMap<String, String>(env);
 		m_remappings = new HashMap<String, String>(remappings);
 		m_rosParams = new ArrayList<RosParamTag>();
 
