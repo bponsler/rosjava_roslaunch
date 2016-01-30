@@ -26,19 +26,19 @@ public class RosProcess
 	private String[] m_envp;
 	/** The working directory used to run this process. */
 	private File m_workingDir;
-	
+
 	/** True if this is a required node, false otherwise. */
 	private boolean m_required;
 	/** True if this node should be respawned, false otherwise. */
 	private boolean m_respawn;
 	/** The delay (in seconds) to wait before respawning this process. */
 	private float m_respawnDelaySeconds;
-	
+
 	/** The stderr StreamPrinter. */
 	private StreamPrinter m_stderrPrinter;
 	/** The stdout StreamPrinter. */
 	private StreamPrinter m_stdoutPrinter;
-	
+
 	/**
 	 * Constructor
 	 *
@@ -61,11 +61,17 @@ public class RosProcess
 		m_name = name;
 		m_process = process;
 		m_required = required;
-		
+
+		// Remove the starting global namespace slash from all
+		// process names, if it exists
+		if (m_name.startsWith("/")) {
+			m_name = m_name.substring(1);
+		}
+
 		// Default values for respawning
 		m_respawn = false;
 		m_respawnDelaySeconds = 10;
-		
+
 		// Create the command that was used to run this process
 		m_command = "";
 		int index = 0;
@@ -73,11 +79,11 @@ public class RosProcess
 			if (index++ > 0) m_command += " ";
 			m_command += arg;
 		}
-		
+
 		// No environment, or working directory by default
 		m_envp = null;
 		m_workingDir = null;
-		
+
 		// Print stdout, and stderr for this process to the console
 		if (printStreams) {
 			this.printStreams();
@@ -87,7 +93,7 @@ public class RosProcess
 			m_stdoutPrinter = null;
 		}
 	}
-	
+
 	/**
 	 * Set the environment used to run this process.
 	 *
@@ -97,7 +103,7 @@ public class RosProcess
 	{
 		m_envp = envp;
 	}
-	
+
 	/**
 	 * Set the working directory used to run this process.
 	 *
@@ -107,7 +113,7 @@ public class RosProcess
 	{
 		m_workingDir = workingDir;
 	}
-	
+
 	/**
 	 * Set this process to respawn when it dies.
 	 *
@@ -118,7 +124,7 @@ public class RosProcess
 		m_respawn = true;
 		m_respawnDelaySeconds = respawnDelaySeconds;
 	}
-	
+
 	/**
 	 * Get the name of the process.
 	 *
@@ -128,7 +134,7 @@ public class RosProcess
 	{
 		return m_name;
 	}
-	
+
 	/**
 	 * Determine if this is a required node.
 	 *
@@ -138,7 +144,7 @@ public class RosProcess
 	{
 		return m_required;
 	}
-	
+
 	/**
 	 * Determine if this is should be respawned when it dies.
 	 *
@@ -148,7 +154,7 @@ public class RosProcess
 	{
 		return m_respawn;
 	}
-	
+
 	/**
 	 * Get the number of seconds to wait before respawning this process.
 	 *
@@ -158,7 +164,7 @@ public class RosProcess
 	{
 		return m_respawnDelaySeconds;
 	}
-	
+
 	/**
 	 * Get the process ID for this process.
 	 *
@@ -168,7 +174,7 @@ public class RosProcess
 	{
 		return Util.getPid(m_process);
 	}
-	
+
 	/**
 	 * Get the exit code for this process, or null if the
 	 * process is still running.
@@ -184,7 +190,7 @@ public class RosProcess
 			return null;  // still running
 		}
 	}
-	
+
 	/**
 	 * Get a human readable description of the exit code for this process.
 	 *
@@ -205,18 +211,18 @@ public class RosProcess
 			else {
 				output = "process has finished cleanly";
 			}
-			
+
 			// TODO: include location of log file in output
-			
+
 			return output;
 		}
-		
+
 		return null;  // Process is still running
 	}
-	
+
 	/**
 	 * Restart the process.
-	 * 
+	 *
 	 * @throws IOException if there is an error while starting the process
 	 */
 	public void restart() throws IOException
@@ -224,14 +230,14 @@ public class RosProcess
 		m_process.destroy();
 		m_process = Runtime.getRuntime().exec(m_command, m_envp, m_workingDir);
 	}
-	
+
 	/**
 	 * Destroy this process (i.e., stop it from running).
 	 */
 	public void destroy()
 	{
 		m_process.destroy();
-		
+
 		if (m_stderrPrinter != null) {
 			m_stderrPrinter.stopPrinting();
 			m_stderrPrinter.interrupt();
@@ -241,7 +247,7 @@ public class RosProcess
 			m_stdoutPrinter.interrupt();
 		}
 	}
-	
+
 	public boolean isRunning()
 	{
 		try {
@@ -254,7 +260,7 @@ public class RosProcess
 
 		return false;  // the process is no longer running
 	}
-	
+
 	/**
 	 * Wait for the process to finish running.
 	 *
@@ -264,7 +270,7 @@ public class RosProcess
 	{
 		m_process.waitFor();
 	}
-	
+
 	/**
 	 * Print the stdout and stderr streams of the process to
 	 * the console.
@@ -273,7 +279,7 @@ public class RosProcess
 	{
 		m_stderrPrinter = new StreamPrinter(m_process.getErrorStream());
 		m_stdoutPrinter = new StreamPrinter(m_process.getInputStream());
-		
+
 		m_stderrPrinter.start();
 		m_stdoutPrinter.start();
 	}
