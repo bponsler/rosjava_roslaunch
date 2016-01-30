@@ -40,16 +40,16 @@ public class ArgTag extends BaseTag
 	 *
 	 * Create a ArgTag object from XML.
 	 *
-	 * @param file is the File that contains this arg
+	 * @param parentFile is the File that contains this arg
 	 * @param arg is the XML Element for the arg tag
 	 * @param argMap is the Map of args defined in this scope
 	 * @throws a RuntimeException if the 'name' attribute is not defined
 	 * @throws a RuntimeException if the 'default' and 'value' attributes
 	 *         are defined at the same time
 	 */
-	public ArgTag(final File file, final Element arg, final Map<String, String> argMap)
+	public ArgTag(final File parentFile, final Element arg, final Map<String, String> argMap)
 	{
-		super(file, arg, argMap, SUPPORTED_ATTRIBUTES);
+		super(parentFile, arg, argMap, SUPPORTED_ATTRIBUTES);
 
 		m_defaultValue = null;
 		m_hasDefaultValue = false;

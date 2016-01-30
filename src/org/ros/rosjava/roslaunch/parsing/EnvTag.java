@@ -29,15 +29,15 @@ public class EnvTag extends BaseTag
 	 *
 	 * Create an EnvTag object from XML.
 	 *
-	 * @param file is the File that contains this env tag
+	 * @param parentFile is the File that contains this env tag
 	 * @param env is the env XML element to parse
 	 * @param argMap is the Map of args defined in this scope
 	 * @throws a RuntimeException if the 'name' attribute is missing
 	 * @throws a RuntimeException if the 'value' attribute is missing
 	 */
-	public EnvTag(final File file, final Element env, final Map<String, String> argMap)
+	public EnvTag(final File parentFile, final Element env, final Map<String, String> argMap)
 	{
-		super(file, env, argMap, SUPPORTED_ATTRIBUTES);
+		super(parentFile, env, argMap, SUPPORTED_ATTRIBUTES);
 
 		// The name attribute is required
 		if (!env.hasAttribute(Attribute.Name.val())) {
