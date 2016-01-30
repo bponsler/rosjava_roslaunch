@@ -224,6 +224,7 @@ public class RosLaunchRunner
 				"rosmaster",
 				master,
 				command,  // command used to run this process
+				true,  // this is a core process
 				false,  // roslaunch does not require this node
 				false);  // do not print output streams to the screen
 		m_processMonitor.addProcess(rosMaster);

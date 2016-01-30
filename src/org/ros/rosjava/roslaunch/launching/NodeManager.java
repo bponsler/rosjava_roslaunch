@@ -224,7 +224,7 @@ public class NodeManager
 	{
 		RosProcess rosProc = null;
 		try {
-			rosProc = createNodeProcess(parsedArgs, node, masterUri);
+			rosProc = createNodeProcess(parsedArgs, node, isCore, masterUri);
 		}
 		catch (IOException e)
 		{
@@ -238,22 +238,7 @@ public class NodeManager
 			rosProc.setRespawn(node.getRespawnDelay());
 		}
 
-		if (!isCore) {
-			// Grab the PID of the running process
-			int pid = rosProc.getPid();
-
-			// Add a message indicating what PID the process has
-			// if we were able to get the PID
-			String pidMsg = "";
-			if (pid != -1) {
-				pidMsg = "with pid [" + pid + "]";
-			}
-
-			PrintLog.bold("process[" + rosProc.getName() + "]: started " + pidMsg);
-		}
-		else {
-			PrintLog.info("started core service [" + rosProc.getName() + "]");
-		}
+		rosProc.printStartMessage();
 
 		return rosProc;
 	}
@@ -336,6 +321,7 @@ public class NodeManager
 	 *
 	 * @param parsedArgs the parsed command line arguments
 	 * @param node the NodeTag to run
+	 * @param isCore true if this is a core process, false otherwise
 	 * @param masterUri the URI to reach the ROS master server
 	 * @return the corresponding RosProcess
 	 * @throws IOException
@@ -343,6 +329,7 @@ public class NodeManager
 	private static RosProcess createNodeProcess(
 			final ArgumentParser parsedArgs,
 			final NodeTag node,
+			final boolean isCore,
 			final String masterUri) throws IOException
 	{
 		// Get the command line call to execute the node
@@ -370,12 +357,20 @@ public class NodeManager
 			printStreams = true;
 		}
 
-		return new RosProcess(
+		RosProcess rosProc = new RosProcess(
 				processName,
 				proc,
 				command,
+				isCore,
 				node.isRequired(),
 				printStreams);
+
+		// Set the environment and working directory that
+		// were used to run the process
+		rosProc.setEnvironment(envp);
+		rosProc.setWorkingDir(workingDir);
+
+		return rosProc;
 	}
 
 	/**

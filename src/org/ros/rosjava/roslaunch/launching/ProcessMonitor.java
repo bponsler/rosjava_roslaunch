@@ -90,7 +90,7 @@ public class ProcessMonitor
 			monitorProcesses();
 		}
 		catch (Exception e) {
-			e.printStackTrace();  // TODO: just for test
+			PrintLog.error("ERROR: while monitoring processes: " + e.getMessage());
 		}
 
 		m_semaphore.release();  // Release before leaving
@@ -158,7 +158,7 @@ public class ProcessMonitor
 			// Handle all of the non-required processes that
 			// have died during this cycle
 			for (RosProcess deadProc : diedProcesses.keySet()) {
-				handleNonReqDeadProcess(deadProc);
+				handleNonReqDeadProcess(deadProc, diedProcesses.get(deadProc));
 			}
 
 			// Handle all respawning processes
@@ -171,7 +171,7 @@ public class ProcessMonitor
 	 *
 	 * @return the Map of RosProcesses to their time of death (in nano time)
 	 */
-	public Map<RosProcess, Long> findDiedProcesses()
+	private Map<RosProcess, Long> findDiedProcesses()
 	{
 		// Map dead processes to their time of death
 		Map<RosProcess, Long> diedProcesses = new HashMap<RosProcess, Long>();
@@ -226,22 +226,15 @@ public class ProcessMonitor
 	 * Handle the death of a non-required process.
 	 *
 	 * @param deadProc the non-required process that died
+	 * @param timeOfDetah the nano time when the process died
 	 */
-	public void handleNonReqDeadProcess(final RosProcess deadProc)
+	private void handleNonReqDeadProcess(final RosProcess deadProc, final Long timeOfDeath)
 	{
-		//Long timeOfDeath = diedProcesses.get(deadProc);
-
 		// Determine if this node should be respawned
 		if (deadProc.shouldRespawn())
 		{
 			//// Node should be respawned
-			//m_respawningProcesses.put(deadProc, timeOfDeath);
-
-			// TODO: finish implementing respawning of nodes
-			PrintLog.error(
-				"WARNING: respawning nodes is not yet implemented!");
-			deadProc.destroy();
-			m_deadProcesses.add(deadProc);
+			m_respawningProcesses.put(deadProc, timeOfDeath);
 		}
 		else
 		{

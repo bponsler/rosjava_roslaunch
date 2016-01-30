@@ -3,6 +3,7 @@ package org.ros.rosjava.roslaunch.launching;
 import java.io.File;
 import java.io.IOException;
 
+import org.ros.rosjava.roslaunch.logging.PrintLog;
 import org.ros.rosjava.roslaunch.util.StreamPrinter;
 import org.ros.rosjava.roslaunch.util.Util;
 
@@ -27,6 +28,11 @@ public class RosProcess
 	/** The working directory used to run this process. */
 	private File m_workingDir;
 
+	/** True if streams are being printed for this process. */
+	private boolean m_printStreams;
+
+	/** True if this is a core process, false otherwise. */
+	private boolean m_isCore;
 	/** True if this is a required node, false otherwise. */
 	private boolean m_required;
 	/** True if this node should be respawned, false otherwise. */
@@ -55,12 +61,15 @@ public class RosProcess
 			final String name,
 			final Process process,
 			final String[] command,
+			final boolean isCore,
 			final boolean required,
 			final boolean printStreams)
 	{
 		m_name = name;
 		m_process = process;
+		m_isCore = isCore;
 		m_required = required;
+		m_printStreams = printStreams;
 
 		// Remove the starting global namespace slash from all
 		// process names, if it exists
@@ -85,13 +94,7 @@ public class RosProcess
 		m_workingDir = null;
 
 		// Print stdout, and stderr for this process to the console
-		if (printStreams) {
-			this.printStreams();
-		}
-		else {
-			m_stderrPrinter = null;
-			m_stdoutPrinter = null;
-		}
+		setupPrintStreams();
 	}
 
 	/**
@@ -221,6 +224,30 @@ public class RosProcess
 	}
 
 	/**
+	 * Print the message informing the user that this process has been started.
+	 */
+	public void printStartMessage()
+	{
+		if (!m_isCore)
+		{
+			// Grab the PID of the running process
+			int pid = getPid();
+
+			// Add a message indicating what PID the process has
+			// if we were able to get the PID
+			String pidMsg = "";
+			if (pid != -1) {
+				pidMsg = "with pid [" + pid + "]";
+			}
+
+			PrintLog.bold("process[" + getName() + "]: started " + pidMsg);
+		}
+		else {
+			PrintLog.info("started core service [" + getName() + "]");
+		}
+	}
+
+	/**
 	 * Restart the process.
 	 *
 	 * @throws IOException if there is an error while starting the process
@@ -229,6 +256,11 @@ public class RosProcess
 	{
 		m_process.destroy();
 		m_process = Runtime.getRuntime().exec(m_command, m_envp, m_workingDir);
+
+		printStartMessage();
+
+		// Set up the streams for this process
+		setupPrintStreams();
 	}
 
 	/**
@@ -241,10 +273,12 @@ public class RosProcess
 		if (m_stderrPrinter != null) {
 			m_stderrPrinter.stopPrinting();
 			m_stderrPrinter.interrupt();
+			m_stderrPrinter = null;
 		}
 		if (m_stdoutPrinter != null) {
 			m_stdoutPrinter.stopPrinting();
 			m_stdoutPrinter.interrupt();
+			m_stdoutPrinter = null;
 		}
 	}
 
@@ -272,15 +306,21 @@ public class RosProcess
 	}
 
 	/**
-	 * Print the stdout and stderr streams of the process to
-	 * the console.
+	 * Set up the print streams for this process.
 	 */
-	private void printStreams()
+	private void setupPrintStreams()
 	{
-		m_stderrPrinter = new StreamPrinter(m_process.getErrorStream());
-		m_stdoutPrinter = new StreamPrinter(m_process.getInputStream());
+		if (m_printStreams)
+		{
+			m_stderrPrinter = new StreamPrinter(m_process.getErrorStream());
+			m_stdoutPrinter = new StreamPrinter(m_process.getInputStream());
 
-		m_stderrPrinter.start();
-		m_stdoutPrinter.start();
+			m_stderrPrinter.start();
+			m_stdoutPrinter.start();
+		}
+		else {
+			m_stderrPrinter = null;
+			m_stdoutPrinter = null;
+		}
 	}
 }
