@@ -20,7 +20,6 @@ import org.ros.rosjava.roslaunch.util.Util;
 // TODO: test nodes are not implemented
 // TODO: PRINT OUT ERROR (STOP) ON ARG BEING UNUSED IN INCLUDE
 //       need to know what subs args get resolved...
-// TODO: finish supported Param binfile attribute
 // TODO: do i need to register core/non-core processes?
 // TODO: should the launch stop if the master it ran is killed?
 

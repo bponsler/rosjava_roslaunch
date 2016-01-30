@@ -7,7 +7,6 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Map;
 
-import org.ros.rosjava.roslaunch.logging.PrintLog;
 import org.ros.rosjava.roslaunch.util.RosUtil;
 import org.ros.rosjava.roslaunch.util.Util;
 import org.w3c.dom.Element;
@@ -29,6 +28,9 @@ public class ParamTag extends BaseTag
 
 	/** The namespace the param is in. */
 	private String m_ns;
+
+	/** True if this param contains data from a binary file. */
+	private boolean m_hasBinFile;
 
 	/** The list of attributes supported by this tag. */
 	private static final Attribute[] SUPPORTED_ATTRIBUTES = new Attribute[]{
@@ -74,7 +76,7 @@ public class ParamTag extends BaseTag
 		m_name = param.getAttribute(Attribute.Name.val());
 		m_name = SubstitutionArgs.resolve(m_name, argMap);
 
-		boolean hasBinFile = param.hasAttribute(Attribute.BinFile.val());
+		m_hasBinFile = param.hasAttribute(Attribute.BinFile.val());
 		boolean hasCommand = param.hasAttribute(Attribute.Command.val());
 		boolean hasTextFile = param.hasAttribute(Attribute.TextFile.val());
 		boolean hasValue = param.hasAttribute(Attribute.Value.val());
@@ -82,7 +84,7 @@ public class ParamTag extends BaseTag
 		// Determine how many different 'values' were set, and enforce
 		// that only one can be specified at a time
 		int num = 0;
-		if (hasBinFile) num++;
+		if (m_hasBinFile) num++;
 		if (hasCommand) num++;
 		if (hasTextFile) num++;
 		if (hasValue) num++;
@@ -162,37 +164,13 @@ public class ParamTag extends BaseTag
 		}
 
 		// Load the optional textfile
-		if (hasTextFile)
-		{
-			String textfile = param.getAttribute(Attribute.TextFile.val());
-			textfile = SubstitutionArgs.resolve(textfile, argMap);
-
-			// Load the file
-			File f = new File(textfile);
-			if (!f.exists() && !f.isFile())
-			{
-				throw new RuntimeException(
-					"Invalid <param> tag: No such file or directory: " + textfile);
-			}
-
-			// Read the contents of the file
-			try {
-				byte[] encoded = Files.readAllBytes(Paths.get(textfile));
-				m_value = new String(encoded, Charset.defaultCharset());
-			}
-			catch (IOException e)
-			{
-				throw new RuntimeException(
-					"Invalid <param> tag: failed to read textfile: " + textfile);
-			}
+		if (hasTextFile) {
+			m_value = readFileContents(param, Attribute.TextFile, argMap);
 		}
 
 		// Load the optional binfile
-		if (hasBinFile)
-		{
-			// TODO: finish supporting this
-			PrintLog.error(
-				"WARNING: the param tag attribute 'binfile' is not yet supported!");
+		if (m_hasBinFile) {
+			m_value = readFileContents(param, Attribute.BinFile, argMap);
 		}
 
 		// Load the optional command
@@ -258,5 +236,56 @@ public class ParamTag extends BaseTag
 	public String getValue()
 	{
 		return m_value;
+	}
+
+	/**
+	 * Determine if this param contains data from a binary file.
+	 *
+	 * @return true if the data is from a binary file
+	 */
+	public boolean hasBinFile()
+	{
+		return m_hasBinFile;
+	}
+
+	/**
+	 * Read the contents of a file referenced by an attribute.
+	 *
+	 * @param param the XML element for the ParamTag
+	 * @param attribute the attribute that stores the filename
+	 * @param argMap the Map of args defined in this scope
+	 * @return the contents of the file
+	 * @throws RuntimeException if the file does not exist
+	 * @throws RuntimeException if failed to read the file data
+	 */
+	private String readFileContents(
+			final Element param,
+			final Attribute attribute,
+			final Map<String, String> argMap)
+	{
+		String binfile = param.getAttribute(attribute.val());
+		binfile = SubstitutionArgs.resolve(binfile, argMap);
+
+		// Load the file
+		File f = new File(binfile);
+		if (!f.exists() && !f.isFile())
+		{
+			throw new RuntimeException(
+				"Invalid <param> tag: No such file or directory: " + binfile);
+		}
+
+		// Read the contents of the file
+		String value = null;
+		try {
+			byte[] encoded = Files.readAllBytes(Paths.get(binfile));
+			value = new String(encoded, Charset.defaultCharset());
+		}
+		catch (IOException e)
+		{
+			throw new RuntimeException(
+				"Invalid <param> tag: failed to read " + attribute.val() + ": " + binfile);
+		}
+
+		return value;
 	}
 }

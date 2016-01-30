@@ -158,7 +158,15 @@ public class ParamManager
 		{
 			// Use the XMLRPC interface to set all parameters
 			RosXmlRpcClient client = new RosXmlRpcClient(uri);
-			client.setParam(param.getResolvedName(), param.getType(), param.getValue());
+
+			if (param.hasBinFile()) {
+				// Set the binary data param
+				client.setBinaryParam(param.getResolvedName(), param.getValue());
+			}
+			else {
+				// Set the non-binary data param
+				client.setParam(param.getResolvedName(), param.getType(), param.getValue());
+			}
 		}
 	}
 }

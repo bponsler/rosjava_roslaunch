@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.codec.binary.Base64;
 import org.ros.rosjava.roslaunch.logging.PrintLog;
 import org.ros.rosjava.roslaunch.parsing.RosParamTag;
 import org.ros.rosjava.roslaunch.util.RosUtil;
@@ -243,6 +244,23 @@ public class RosXmlRpcClient
 	public RosParamResponse setParam(final String paramName, final String value) throws Exception
 	{
 		return setParamObject(paramName, value);
+	}
+
+	/**
+	 * Set the value of a binary parameter on the server.
+	 *
+	 * @param paramName is the name of the parameter to set
+	 * @param value is the binary data
+	 * @return the RosParamResponse data
+	 * @throws an Exception if the request fails
+	 */
+	public RosParamResponse setBinaryParam(final String paramName, final String value) throws Exception
+	{
+		// Encode the string using base64
+		String encoded = Base64.encodeBase64String(value.getBytes());
+
+		String xml = "<value><base64>" + encoded + "</base64></value>";
+		return setXmlParam(paramName, xml);
 	}
 
 	/**
