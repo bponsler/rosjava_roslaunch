@@ -69,10 +69,31 @@ public class RosXmlRpcClient
 	}
 
 	/**
+	 * Determine if the parameter server has a specific parameter.
+	 *
+	 * @param param is the name of the parameter to request
+	 * @return the HasParamResponse data
+	 * @throws Exception if the request fails
+	 */
+	public HasParamResponse hasParam(final String param) throws Exception
+	{
+		String data = "";
+		data += "<methodCall>";
+		data += "  <methodName>hasParam</methodName>";
+		data += "  <params>";
+		data += "    <param><value><string>" + m_name + "</string></value></param>";
+		data += "    <param><value><string>" + param + "</string></value></param>";
+		data += "  </params>";
+		data += "</methodCall>";
+
+		return new HasParamResponse(sendXmlRpcData(data));
+	}
+
+	/**
 	 * Request the value of a parameter from the server.
 	 *
 	 * @param param is the name of the parameter to request
-	 * @return the value of the parameter
+	 * @return the GetParamresponse data
 	 * @throws Exception if the request fails
 	 */
 	public GetParamResponse getParam(final String param) throws Exception

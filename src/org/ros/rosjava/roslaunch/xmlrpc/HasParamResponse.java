@@ -1,28 +1,28 @@
 package org.ros.rosjava.roslaunch.xmlrpc;
 
 /**
- * The GetParamResponse class
+ * The HasParamResponse class
  *
  * This class is responsible for encapsulating the XMLRPC response
- * data for the GetParam XMLRPC request.
+ * data for the HasParam XMLRPC request.
  */
-public class GetParamResponse extends RosXmlRpcResponseBase
+public class HasParamResponse extends RosXmlRpcResponseBase
 {
 	/** The response code. */
 	protected int m_code;
 	/** The status message. */
 	protected String m_statusMessage;
-	/** The parameter value. */
-	protected Object m_paramValue;
+	/** Whether or not the parameter exists. */
+	protected boolean m_hasParam;
 
 	/**
 	 * Constructor
 	 *
-	 * Create a GetParamResponse object from an XMLRPC response.
+	 * Create a HasParamResponse object from an XMLRPC response.
 	 *
 	 * @param other is the RosXmlRpcResponseBase object
 	 */
-	public GetParamResponse(final RosXmlRpcResponseBase other)
+	public HasParamResponse(final RosXmlRpcResponseBase other)
 	{
 		super(other);
 
@@ -36,8 +36,8 @@ public class GetParamResponse extends RosXmlRpcResponseBase
 		//         <array>
 		//           <data>
 		//             <value><int>1</int></value>
-		//             <value><string>parameter /my_bool_param set</string></value>
-		//             <value><string>my_value</string></value>
+		//             <value><string>parameter /my_bool_param</string></value>
+		//             <value><boolean>1</boolean></value>
 		//           </data>
 		//         </array>
 		//       </value>
@@ -46,17 +46,17 @@ public class GetParamResponse extends RosXmlRpcResponseBase
 		// </methodResponse>
 
 		// The return parameters are as follows:
-		//     status code, status message, and param value
+		//     status code, status message, and has param
 		m_code = -1;
 		m_statusMessage = "Failed to parse";
-		m_paramValue = "";
+		m_hasParam = false;
 
 		// There should be exactly three response items
 		if (m_responseData.size() == 3)
 		{
 			m_code = (Integer)m_responseData.get(0);
 			m_statusMessage = (String)m_responseData.get(1);
-			m_paramValue = m_responseData.get(2);
+			m_hasParam = (Boolean)m_responseData.get(2);
 		}
 
 		// Check for success
@@ -86,12 +86,12 @@ public class GetParamResponse extends RosXmlRpcResponseBase
 	}
 
 	/**
-	 * Get the param value.
+	 * Determine if the parameter exists on the server.
 	 *
-	 * @return the param value
+	 * @return true if the parameter exists
 	 */
-	public Object getParamValue()
+	public boolean getParamValue()
 	{
-		return m_paramValue;
+		return m_hasParam;
 	}
 }
