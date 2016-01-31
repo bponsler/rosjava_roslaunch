@@ -90,7 +90,7 @@ public class HasParamResponse extends RosXmlRpcResponseBase
 	 *
 	 * @return true if the parameter exists
 	 */
-	public boolean getParamValue()
+	public boolean hasParam()
 	{
 		return m_hasParam;
 	}
