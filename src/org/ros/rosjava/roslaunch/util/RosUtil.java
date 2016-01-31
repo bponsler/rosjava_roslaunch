@@ -755,4 +755,52 @@ public class RosUtil
 
 		return anonymousId;
 	}
+
+	/**
+	 * Get the path to the ROS log directory.
+	 *
+	 * @return the path to the ROS log directory
+	 */
+	public static File getRosLogDir()
+	{
+		String rosLogDir = EnvVar.ROS_LOG_DIR.getOpt("");
+		if (rosLogDir == null || rosLogDir.length() == 0)
+		{
+			File rosHome = RosUtil.getRosHome();
+			return new File(rosHome, "log");
+		}
+		else {
+			return new File(rosLogDir);
+		}
+	}
+
+	/**
+	 * Check the disk usage of the log directory, and if it's higher
+	 * than 1 GB, print a warning to the user.
+	 */
+	public static void checkLogDiskUsage()
+	{
+		PrintLog.info("Checking log directory for disk usage. This may take awhile.");
+		PrintLog.info("Press Ctrl-C to interrupt");
+
+		try
+		{
+			File rosLogDir = getRosLogDir();
+			long numBytes = Util.size(rosLogDir.toPath());
+
+			// If it's higher than 1 GB, alert the user
+			if (numBytes > 1073741824)
+			{
+				PrintLog.error("WARNING: disk usage in log directory [" +
+							   rosLogDir.getAbsolutePath() + "] is over 1GB.");
+				PrintLog.error("It's recommended that you use the 'rosclean' command.");
+			}
+			else {
+				PrintLog.info("Done checking log file disk usage. Usage is <1GB.");
+			}
+		}
+		catch (Exception e) {
+			// Ignore errors while calculating size
+		}
+	}
 }

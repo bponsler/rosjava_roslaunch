@@ -6,7 +6,6 @@ NOTE: this project is very much in its early stages and there are many pieces of
 The following items are known to be not implemented:
 
     - launching of remote nodes
-    - creating and managing log files
     - launching of test nodes
     - the --child command line argument
     - the - command line option

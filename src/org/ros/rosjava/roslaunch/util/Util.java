@@ -3,11 +3,18 @@ package org.ros.rosjava.roslaunch.util;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Field;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.ros.rosjava.roslaunch.logging.PrintLog;
 import org.ros.rosjava.roslaunch.parsing.Attribute;
@@ -249,4 +256,49 @@ public class Util
 		final String dir = System.getProperty("user.dir");
         return new File(dir);
 	}
+
+	/**
+	 * Get an estimate of the size of a file or folder.
+	 *
+	 * This function was found at:
+	 *
+	 *     http://stackoverflow.com/questions/2149785/get-size-of-folder-or-file/19877372#19877372
+	 *
+	 * @param path the path to the file or folder
+	 * @return the size in bytes
+	 */
+	public static long size (Path path)
+	{
+        final AtomicLong size = new AtomicLong(0);
+
+        try
+        {
+            Files.walkFileTree (path, new SimpleFileVisitor<Path>()
+            {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
+                {
+                    size.addAndGet(attrs.size());
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override public FileVisitResult visitFileFailed(Path file, IOException exc)
+                {
+                    // Skip folders that can't be traversed
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override public FileVisitResult postVisitDirectory (Path dir, IOException exc)
+                {
+                    // Ignore errors traversing a folder
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        }
+        catch (IOException e) {
+            throw new AssertionError("Error while computing size: " + e.getMessage());
+        }
+
+        return size.get();
+    }
 }

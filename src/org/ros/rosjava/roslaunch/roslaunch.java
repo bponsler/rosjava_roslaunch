@@ -7,6 +7,8 @@ import java.util.List;
 import org.ros.rosjava.roslaunch.launching.ArgManager;
 import org.ros.rosjava.roslaunch.launching.NodeManager;
 import org.ros.rosjava.roslaunch.launching.RosLaunchRunner;
+import org.ros.rosjava.roslaunch.logging.FileLog;
+import org.ros.rosjava.roslaunch.logging.FileLog.FileLogger;
 import org.ros.rosjava.roslaunch.logging.PrintLog;
 import org.ros.rosjava.roslaunch.parsing.ArgTag;
 import org.ros.rosjava.roslaunch.parsing.LaunchFile;
@@ -16,7 +18,6 @@ import org.ros.rosjava.roslaunch.util.RosUtil;
 import org.ros.rosjava.roslaunch.util.Util;
 
 // TODO: support env tag inside machine
-// TODO: handle logging, check log file size
 // TODO: test nodes are not implemented
 // TODO: should the launch stop if the master it ran is killed?
 
@@ -139,6 +140,9 @@ public class roslaunch
 				file.delete();
 			}
 		}
+
+		// Close the file log
+		FileLog.close();
 	}
 
 	/**
@@ -171,6 +175,24 @@ public class roslaunch
 			return;
 		}
 
+		// Create a UUID which gets used to generate a unique
+		// name of the process log file
+		String uuid = RosUtil.getOrGenerateUuid(parsedArgs);
+		FileLog.configure(uuid);
+
+		FileLogger logger = FileLog.getLogger("roslaunch");
+		logger.info("roslaunch starting with args " + args);
+		logger.info("roslaunch env is " + System.getenv());
+
+        // Don't check disk usage on remote machines
+        if (!parsedArgs.hasChild() && !parsedArgs.hasSkipLogCheck()) {
+            RosUtil.checkLogDiskUsage();
+        }
+
+        if (!parsedArgs.hasChild()) {
+            logger.info("starting in server mode");
+        }
+
 		// Handle the --pid= option
 		if (parsedArgs.hasPid())
 		{
@@ -180,7 +202,9 @@ public class roslaunch
 			try {
 				Util.writePidFile(PID_FILE);
 			}
-			catch (Exception e) {
+			catch (Exception e)
+			{
+				logger.error(e.getStackTrace().toString());
 				printUsage(e.getMessage());
 				return;
 			}
@@ -199,12 +223,7 @@ public class roslaunch
 				// Wait for the master to start running
 				while (!isRunning)
 				{
-					try {
-						Thread.sleep(100);
-					}
-					catch (Exception e) {
-						// Ignore errors while sleeping
-					}
+					try { Thread.sleep(100); } catch (Exception e) { }
 
 					// Check the master again
 					isRunning = RosUtil.isMasterRunning(masterUri);
@@ -251,7 +270,9 @@ public class roslaunch
 			try {
 				Util.writePidFile(PID_FILE);
 			}
-			catch (Exception e) {
+			catch (Exception e)
+			{
+				logger.error(e.getStackTrace().toString());
 				printUsage(e.getMessage());
 				return;
 			}
@@ -304,7 +325,9 @@ public class roslaunch
 			try {
 				launchFile.parseFile();
 			}
-			catch (Exception e) {
+			catch (Exception e)
+			{
+				logger.error(e.getStackTrace().toString());
 				PrintLog.error("[" + f.getPath() + "]: " + e.getMessage());
 				return;  // Stop on any errors
 			}
@@ -479,14 +502,12 @@ public class roslaunch
 			try {
 				NodeManager.checkForDuplicateNodeNames(launchFiles);
 			}
-			catch (Exception e) {
+			catch (Exception e)
+			{
+				logger.error(e.getStackTrace().toString());
 				PrintLog.error(e.getMessage());
 				return;
 			}
-
-			// TODO: finish configure logging
-			// Create a UUID for this process logging
-			// String uuid = RosUtil.getOrGenerateUuid(parsedArgs);
 
 			// Launch all the nodes!
 			final RosLaunchRunner runner = new RosLaunchRunner(
@@ -498,8 +519,9 @@ public class roslaunch
 				try {
 					runner.dumpParams();
 				}
-				catch (Exception e) {
-					e.printStackTrace(); // TODO: just for debugging
+				catch (Exception e)
+				{
+					logger.error(e.getStackTrace().toString());
 					PrintLog.error("ERROR: launch failed: " + e.getMessage());
 					return;
 				}
@@ -510,8 +532,9 @@ public class roslaunch
 				try {
 					runner.launch();
 				}
-				catch (Exception e) {
-					e.printStackTrace(); // TODO: just for debugging
+				catch (Exception e)
+				{
+					logger.error(e.getStackTrace().toString());
 					PrintLog.error("ERROR: launch failed: " + e.getMessage());
 					return;
 				}

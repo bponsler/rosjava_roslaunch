@@ -9,6 +9,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 
 import org.ros.rosjava.roslaunch.ArgumentParser;
+import org.ros.rosjava.roslaunch.logging.FileLog;
 import org.ros.rosjava.roslaunch.logging.PrintLog;
 import org.ros.rosjava.roslaunch.parsing.GroupTag;
 import org.ros.rosjava.roslaunch.parsing.IncludeTag;
@@ -379,6 +380,8 @@ public class LaunchConfig
 		// We can assume this file exists, because the getRoscoreConfigFile
 		// checks that for us
 		File file = new File(rosCoreXml);
+
+		FileLog.info("roslaunch", "loading roscore config file " + rosCoreXml);
 
 		// It's just a launch file, so load it
 		m_rosCoreLaunch = new LaunchFile(file);

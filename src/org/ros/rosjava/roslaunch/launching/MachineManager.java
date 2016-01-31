@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.ros.rosjava.roslaunch.logging.FileLog;
 import org.ros.rosjava.roslaunch.parsing.GroupTag;
 import org.ros.rosjava.roslaunch.parsing.IncludeTag;
 import org.ros.rosjava.roslaunch.parsing.LaunchFile;
@@ -228,6 +229,10 @@ public class MachineManager
 					// first machine tag for uses of the second machine
 					// name
 					m_overrides.put(name2, machine1);
+
+					FileLog.info("roslaunch",
+						"... changing machine assignment from [" + machine2 +
+						"] to [" + machine1 + "] as they are equivalent");
 				}
 			}
 		}
@@ -284,7 +289,13 @@ public class MachineManager
 			}
 		}
 
-		if (machine != null) {  // Just for safety
+		if (machine != null)  // Just for safety
+		{
+			FileLog.info("roslaunch",
+				"... selected machine [" + machine.getName() +
+				"] for node of type [" + node.getPackage() +
+				"/" + node.getType() + "]");
+
 			node.setMachine(machine);
 		}
 	}
