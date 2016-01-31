@@ -17,9 +17,7 @@ import org.ros.rosjava.roslaunch.util.EnvVar;
 import org.ros.rosjava.roslaunch.util.RosUtil;
 import org.ros.rosjava.roslaunch.util.Util;
 
-// TODO: support env tag inside machine
 // TODO: test nodes are not implemented
-// TODO: should the launch stop if the master it ran is killed?
 
 /**
  * The roslaunch class

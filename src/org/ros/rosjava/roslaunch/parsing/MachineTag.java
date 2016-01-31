@@ -3,9 +3,13 @@ package org.ros.rosjava.roslaunch.parsing;
 import java.io.File;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.HashMap;
 import java.util.Map;
 
+import org.ros.rosjava.roslaunch.logging.PrintLog;
 import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
 /**
  * The MachineTag class
@@ -31,6 +35,9 @@ public class MachineTag extends BaseTag
 	private int m_sshPort;
 	/** The timeout for the machine. */
 	private float m_timeout;
+
+	/** The Map of env variables defined by this node. */
+	private Map<String, String> m_env;
 
 	/** The list of attributes supported by this tag. */
 	private static final Attribute[] SUPPORTED_ATTRIBUTES = new Attribute[]{
@@ -65,6 +72,8 @@ public class MachineTag extends BaseTag
 		m_password = "";
 		m_sshPort = 22;
 		m_timeout = 10;
+
+		m_env = new HashMap<String, String>();
 	}
 
 	/**
@@ -86,6 +95,8 @@ public class MachineTag extends BaseTag
 		m_password = other.m_password;
 		m_sshPort = other.m_sshPort;
 		m_timeout = other.m_timeout;
+
+		m_env = new HashMap<String, String>(other.m_env);
 	}
 
 	/**
@@ -108,12 +119,15 @@ public class MachineTag extends BaseTag
 	public MachineTag(
 			final File parentFile,
 			final Element machine,
-			final Map<String, String> argMap)
+			final Map<String, String> argMap,
+			final Map<String, String> env)
 	{
 		super(parentFile, machine, argMap, SUPPORTED_ATTRIBUTES);
 
 		// Stop parsing if the tag is not included
 		if (!isEnabled()) return;
+
+		m_env = new HashMap<String, String>(env);
 
 		// name (required)
 		if (!machine.hasAttribute(Attribute.Name.val())) {
@@ -207,6 +221,46 @@ public class MachineTag extends BaseTag
 					"Invalid <machine> tag: invalid float 'timeout' value: " + timeout);
 			}
 		}
+
+		// Parse all child tags
+		parseChildren(machine, argMap);
+	}
+
+	/**
+	 * Parse all of the child tags for the machine.
+	 *
+	 * @param machine is the XML Element for the machine tag
+	 * @param argMap is the Map of args defined in this scope
+	 */
+	private void parseChildren(final Element machine, final Map<String, String> argMap)
+	{
+		NodeList children = machine.getChildNodes();
+		for (int index = 0; index < children.getLength(); ++index)
+		{
+			Node element = children.item(index);
+			String childTag = element.getNodeName();
+
+			// Ignore #comment and #text tags, all tags we're interested in
+			// should be element nodes
+			if (!childTag.startsWith("#") && element.getNodeType() == Node.ELEMENT_NODE)
+			{
+				Element child = (Element)element;
+
+				if (childTag.compareTo(Tag.Env.val()) == 0)
+				{
+					EnvTag envTag = new EnvTag(
+							m_parentFile, child, argMap);
+					if (envTag.isEnabled()) {
+						m_env.put(envTag.getName(), envTag.getValue());
+					}
+					else
+					{
+						PrintLog.error(
+							"WARN: unrecognized '" + childTag + "' tag in <machine> tag");
+					}
+				}
+			}
+		}
 	}
 
 	/**
@@ -287,6 +341,16 @@ public class MachineTag extends BaseTag
 	public float getTimeout()
 	{
 		return m_timeout;
+	}
+
+	/**
+	 * Get the Map of env variables defined by this node.
+	 *
+	 * @return the Map of env variables
+	 */
+	public Map<String, String> getEnv()
+	{
+		return m_env;
 	}
 
 	/**

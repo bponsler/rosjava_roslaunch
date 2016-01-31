@@ -513,7 +513,7 @@ public class LaunchFile
 				else if (childTag.compareTo(Tag.Machine.val()) == 0)
 				{
 					MachineTag machine = new MachineTag(
-							m_file, child, m_argMap);
+							m_file, child, m_argMap, m_env);
 					if (machine.isEnabled()) {
 						m_machines.add(machine);
 					}
