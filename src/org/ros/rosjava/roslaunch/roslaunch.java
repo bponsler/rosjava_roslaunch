@@ -509,7 +509,7 @@ public class roslaunch
 
 			// Launch all the nodes!
 			final RosLaunchRunner runner = new RosLaunchRunner(
-					parsedArgs, launchFiles);
+					uuid, parsedArgs, launchFiles);
 
 			// Handle the dump params option
 			if (parsedArgs.hasDumpParams())

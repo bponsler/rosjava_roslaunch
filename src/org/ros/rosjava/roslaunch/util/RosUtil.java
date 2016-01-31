@@ -33,6 +33,9 @@ import org.w3c.dom.Element;
  */
 public class RosUtil
 {
+	/** The run id parameter. */
+	public static final String RUN_ID_PARAM = "/run_id";
+
 	/**
 	 * Find a ROS resource of a specific type and within a specific package.
 	 *
@@ -647,7 +650,7 @@ public class RosUtil
 		{
 			try
 			{
-				GetParamResponse response = client.getParam("/run_id");
+				GetParamResponse response = client.getParam(RUN_ID_PARAM);
 				if (response != null) {
 					uuid = (String)response.getParamValue();
 				}

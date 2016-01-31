@@ -5,10 +5,15 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.ros.rosjava.roslaunch.ArgumentParser;
+import org.ros.rosjava.roslaunch.logging.FileLog;
+import org.ros.rosjava.roslaunch.logging.FileLog.FileLogger;
 import org.ros.rosjava.roslaunch.logging.PrintLog;
 import org.ros.rosjava.roslaunch.parsing.LaunchFile;
 import org.ros.rosjava.roslaunch.util.RosUtil;
 import org.ros.rosjava.roslaunch.util.Util;
+import org.ros.rosjava.roslaunch.xmlrpc.GetParamResponse;
+import org.ros.rosjava.roslaunch.xmlrpc.HasParamResponse;
+import org.ros.rosjava.roslaunch.xmlrpc.RosXmlRpcClient;
 
 /**
  * The RosLaunchRunner class
@@ -25,12 +30,16 @@ public class RosLaunchRunner
 	/** The default timeout to wait for the ROS master to start running before failing. */
 	private static final long MASTER_START_TIMEOUT_NANOS = TimeUnit.SECONDS.toNanos(10);
 
+	/** The run id for this process.*/
+	private String m_runId;
 	/** The parsed command line arguments. */
 	private ArgumentParser m_parsedArgs;
 	/** The port where the ROS master server is running / should run. */
 	private int m_port;
 	/** The number of workers to use when launching the rosmaster. */
 	private int m_numWorkers;
+	/** Filer logger for this class. */
+	private FileLogger m_logger;
 
 	/** The ProcessMonitor object. */
 	private ProcessMonitor m_processMonitor;
@@ -47,12 +56,16 @@ public class RosLaunchRunner
 	 * @param launchFiles the List of LaunchFiles
 	 */
 	public RosLaunchRunner(
+			final String runId,
 			final ArgumentParser parsedArgs,
 			final List<LaunchFile> launchFiles)
 	{
+		m_runId = runId;
 		m_parsedArgs = parsedArgs;
 		m_port = DEFAULT_MASTER_PORT;
 		m_numWorkers = DEFAULT_NUM_WORKERS;
+
+		m_logger = FileLog.getLogger("roslaunch.runner");
 
 		// Load the config
 		m_config = new LaunchConfig(m_parsedArgs, launchFiles);
@@ -156,6 +169,9 @@ public class RosLaunchRunner
 		String uri = m_config.getUri();
 		PrintLog.bold("ROS_MASTER_URI=" + uri + "\n");
 
+		// Ensure that the parameter server has the correct run_id
+		checkAndSetRunId(uri);
+
 		// Update the terminal title to include the master URI
 		if (!m_parsedArgs.hasDisableTitle()) {
 			Util.updateTerminalTitle(uri);
@@ -228,5 +244,91 @@ public class RosLaunchRunner
 				true,  // roslaunch does not require this node
 				false);  // do not print output streams to the screen
 		m_processMonitor.addProcess(rosMaster);
+	}
+
+	/**
+	 * Attempt to grab the value of the /run_id from the parameter server
+	 * and compare it against the expected run_id for this process to determine
+	 * if they are identical. If the parameter server does not yet have a value
+	 * for the run_id then we need to set its value.
+	 *
+	 * @param uri the URI to reach the master server
+	 * @throws RuntimeException if unable to retrieve the run_id from the parameter server
+	 * @throws RuntimeException if the run_id stored on the parameter server does
+	 *         not match our expected run_id
+	 */
+	private void checkAndSetRunId(final String uri)
+	{
+		RosXmlRpcClient client = new RosXmlRpcClient(uri);
+
+		HasParamResponse response = null;
+		try {
+			response = client.hasParam(RosUtil.RUN_ID_PARAM);
+		}
+		catch (Exception e) {
+			throw new RuntimeException(
+				"ERROR: unable to retrieve " + RosUtil.RUN_ID_PARAM +
+				"from the parameter server");
+		}
+
+		// Determine if the parameter server knows about the run id or not
+		if (response == null || response.getCode() == 1 && !response.hasParam())
+		{
+			// The parameter server does not know about the run_id -- we
+			// need to set it
+			PrintLog.bold("setting " + RosUtil.RUN_ID_PARAM + " to " + m_runId);
+			try {
+				client.setParam(RosUtil.RUN_ID_PARAM, m_runId);
+			}
+			catch (Exception e)
+			{
+				m_logger.error(e.getStackTrace().toString());
+				PrintLog.error("ERROR: unable to set " + RosUtil.RUN_ID_PARAM + ": " + e.getMessage());
+			}
+		}
+		else
+		{
+			// Need to verify that the run_id we have been
+			// set to matches what's on the parameter server
+			GetParamResponse getResponse = null;
+			try {
+				getResponse = client.getParam(RosUtil.RUN_ID_PARAM);
+			}
+			catch (Exception e) {
+				// Ignore error -- will throw later
+			}
+
+			if (getResponse != null && getResponse.getCode() == 1)
+			{
+				// Got the run id from the server -- check if its identical
+				// to the expected value
+				String runId = null;
+				try {
+					runId = (String)getResponse.getParamValue();
+				}
+				catch (Exception e)
+				{
+					Object value = getResponse.getParamValue();
+					m_logger.error(e.getStackTrace().toString());
+					throw new RuntimeException(
+						"ERROR: retrieved invalid run_id from parameter server: " + value.toString());
+				}
+
+				// Check if the run id matches our expected run id
+				if (runId == null || runId.compareTo(m_runId) != 0)
+				{
+					throw new RuntimeException(
+						"run_id on parameter server does not match declared run_id: " +
+					    runId + " vs " + m_runId);
+				}
+			}
+			else
+			{
+				// Could not get the value from the server
+				throw new RuntimeException(
+					"ERROR: unable to retrieve " + RosUtil.RUN_ID_PARAM +
+					"from the parameter server");
+			}
+		}
 	}
 }
