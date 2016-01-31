@@ -1,46 +1,28 @@
 package org.ros.rosjava.roslaunch.xmlrpc;
 
 /**
- * The RosParamResponse class
+ * The GetParamResponse class
  *
  * This class is responsible for encapsulating the XMLRPC response
- * data from a parameter server request (e.g., setParam)
+ * data for the GetParam XMLRPC request.
  */
-public class RosParamResponse extends RosXmlRpcResponseBase
+public class GetParamResponse extends RosXmlRpcResponseBase
 {
 	/** The response code. */
 	protected int m_code;
 	/** The status message. */
 	protected String m_statusMessage;
-	/** The ignore field. */
-	protected int m_ignore;
+	/** The parameter value. */
+	protected Object m_paramValue;
 
 	/**
 	 * Constructor
 	 *
-	 * Create a default RosParamResponse object.
-	 *
-	 * @param success true if it was a successful response, false otherwise
-	 */
-	public RosParamResponse(final boolean success)
-	{
-		super();
-
-		// Create a basic response
-		m_code = (success) ? 1 : -1;
-		m_statusMessage = (success) ? "success" : "failure";
-		m_ignore = 0;
-	}
-
-	/**
-	 * Constructor
-	 *
-	 * Create a RosParamResponse object from an XMLRPC response.
+	 * Create a GetParamResponse object from an XMLRPC response.
 	 *
 	 * @param other is the RosXmlRpcResponseBase object
-	 * @throws a RuntimeException if a fault is received
 	 */
-	public RosParamResponse(final RosXmlRpcResponseBase other)
+	public GetParamResponse(final RosXmlRpcResponseBase other)
 	{
 		super(other);
 
@@ -55,7 +37,7 @@ public class RosParamResponse extends RosXmlRpcResponseBase
 		//           <data>
 		//             <value><int>1</int></value>
 		//             <value><string>parameter /my_bool_param set</string></value>
-		//             <value><int>0</int></value>
+		//             <value><string>my_value</string></value>
 		//           </data>
 		//         </array>
 		//       </value>
@@ -64,17 +46,17 @@ public class RosParamResponse extends RosXmlRpcResponseBase
 		// </methodResponse>
 
 		// The return parameters are as follows:
-		//     status code, status message, and ignore
+		//     status code, status message, and parma value
 		m_code = -1;
 		m_statusMessage = "Failed to parse";
-		m_ignore = 0;
+		m_paramValue = "";
 
 		// There should be exactly three response items
 		if (m_responseData.size() == 3)
 		{
 			m_code = (Integer)m_responseData.get(0);
 			m_statusMessage = (String)m_responseData.get(1);
-			m_ignore = (Integer)m_responseData.get(2);
+			m_paramValue = m_responseData.get(2);
 		}
 
 		// Check for success
@@ -101,5 +83,15 @@ public class RosParamResponse extends RosXmlRpcResponseBase
 	public String getStatusMessage()
 	{
 		return m_statusMessage;
+	}
+
+	/**
+	 * Get the param value.
+	 *
+	 * @return the param value
+	 */
+	public Object getParamValue()
+	{
+		return m_paramValue;
 	}
 }

@@ -16,13 +16,13 @@ import org.w3c.dom.NodeList;
  * The RosXmlRpcResponseBase class
  *
  * This class is responsible for encapsulating the XMLRPC data
- * returned from requests made to an ROS XMLRPC server. 
+ * returned from requests made to an ROS XMLRPC server.
  */
 public class RosXmlRpcResponseBase
 {
 	/** The list of all response data returned. */
-	protected List<String> m_responseData;
-	
+	protected List<Object> m_responseData;
+
 	/**
 	 * Constructor
 	 *
@@ -30,9 +30,9 @@ public class RosXmlRpcResponseBase
 	 */
 	protected RosXmlRpcResponseBase()
 	{
-		m_responseData = new ArrayList<String>();
+		m_responseData = new ArrayList<Object>();
 	}
-	
+
 	/**
 	 * Copy constructor
 	 *
@@ -42,9 +42,9 @@ public class RosXmlRpcResponseBase
 	protected RosXmlRpcResponseBase(final RosXmlRpcResponseBase other)
 	{
 		// Copy the data
-		m_responseData = new ArrayList<String>(other.m_responseData);
+		m_responseData = new ArrayList<Object>(other.m_responseData);
 	}
-	
+
 	/**
 	 * Constructor
 	 *
@@ -54,7 +54,7 @@ public class RosXmlRpcResponseBase
 	public RosXmlRpcResponseBase(final InputStream inputStream)
 	{
 		this();
-		
+
 		//// XML response should look something like:
 		//
 		// <?xml version='1.0'?>
@@ -73,7 +73,7 @@ public class RosXmlRpcResponseBase
 		//     </param>
 		//   </params>
 		// </methodResponse>
-		
+
 		// Attempt to parse the response as XML
 		Document doc;
 		try
@@ -81,7 +81,7 @@ public class RosXmlRpcResponseBase
 			DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
 			DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
 			doc = dBuilder.parse(inputStream);
-			
+
 			parseDocument(doc);
 		}
 		catch (Exception e)	{
@@ -92,21 +92,21 @@ public class RosXmlRpcResponseBase
 
 	/**
 	 * Parse the given XML document.
-	 * 
+	 *
 	 * @param doc is the XML document
 	 */
 	private void parseDocument(final Document doc)
 	{
 		// Ensure we have the method response tag
 		Element response = doc.getDocumentElement();
-		if (response.getTagName().compareTo("methodResponse") == 0) {					
+		if (response.getTagName().compareTo("methodResponse") == 0) {
 			parseMethodResponse(response);
 		}
 	}
-	
+
 	/**
 	 * Parse the methodResponse XML tag.
-	 * 
+	 *
 	 * @param responseMethod is the responseMethod XML element
 	 */
 	private void parseMethodResponse(final Element responseMethod)
@@ -132,11 +132,11 @@ public class RosXmlRpcResponseBase
 			}
 		}
 	}
-	
+
 	/**
 	 * Parse the params XML tag.
-	 * 
-	 * @param params is the params XML element 
+	 *
+	 * @param params is the params XML element
 	 */
 	private void parseParams(final Node params)
 	{
@@ -154,12 +154,13 @@ public class RosXmlRpcResponseBase
 			}
 		}
 	}
-	
+
 	/**
 	 * Parse the param XML tag.
-	 * 
+	 *
 	 * @param param is the param XML element
 	 */
+	@SuppressWarnings("unchecked")
 	private void parseParam(final Node param)
 	{
 		NodeList children = param.getChildNodes();
@@ -167,105 +168,41 @@ public class RosXmlRpcResponseBase
 		{
 			Node child = children.item(i);
 			String tag = child.getNodeName();
-			
+
 			// Only interested in value children
 			if (child.getNodeType() == Node.ELEMENT_NODE &&
 				tag.compareTo("value") == 0)
 			{
-				parseParamValue(child);
+				Object data = XmlToObject.xmlToObject((Element)child);
+				if (data != null && ObjectToXml.isList(data))
+				{
+					m_responseData = (List<Object>)data;
+				}
 			}
 		}
 	}
-	
-	/**
-	 * Parse the param value XML tag.
-	 * 
-	 * @param param is the param value XML element
-	 */
-	private void parseParamValue(final Node paramValue)
-	{
-		NodeList children = paramValue.getChildNodes();
-		for (int i = 0; i < children.getLength(); ++i)
-		{
-			Node child = children.item(i);
-			String tag = child.getNodeName();
-			
-			// Only interested in array children
-			if (child.getNodeType() == Node.ELEMENT_NODE &&
-				tag.compareTo("array") == 0)
-			{
-				parseArray(child);
-			}
-		}
-	}
-	
-	/**
-	 * Parse the array XML tag.
-	 * 
-	 * @param param is the array XML element
-	 */
-	private void parseArray(final Node array)
-	{
-		NodeList children = array.getChildNodes();
-		for (int i = 0; i < children.getLength(); ++i)
-		{
-			Node child = children.item(i);
-			String tag = child.getNodeName();
-			
-			// Only interested in data children
-			if (child.getNodeType() == Node.ELEMENT_NODE &&
-				tag.compareTo("data") == 0)
-			{
-				parseArrayData(child);
-			}
-		}
-	}
-	
-	/**
-	 * Parse the array data XML tag.
-	 * 
-	 * @param param is the array data XML element
-	 */
-	private void parseArrayData(final Node data)
-	{		
-		NodeList children = data.getChildNodes();
-		for (int i = 0; i < children.getLength(); ++i)
-		{
-			Node child = children.item(i);
-			String tag = child.getNodeName();
-			
-			// Only interested in value children
-			if (child.getNodeType() == Node.ELEMENT_NODE &&
-				tag.compareTo("value") == 0)
-			{
-				String content = child.getTextContent();
-				
-				m_responseData.add(content);
-			}
-		}
-	}
-	
+
 	/**
 	 * Parse the fault XML tag.
-	 * 
+	 *
 	 * @param param is the fault XML element
 	 * @throws a RuntimeException if a fault is received
 	 */
 	private void parseFault(final Node fault)
 	{
 		NodeList children = fault.getChildNodes();
-		
+
 		for (int i = 0; i < children.getLength(); ++i)
 		{
 			Node child = children.item(i);
 			String tag = child.getNodeName();
-			
+
 			// Only interested in value children
 			if (child.getNodeType() == Node.ELEMENT_NODE &&
 				tag.compareTo("value") == 0)
 			{
 				throw new RuntimeException(
-						"FAULT: " + child.getTextContent());
+						"XMLRPC fault: " + child.getTextContent());
 			}
 		}
 	}

@@ -20,6 +20,7 @@ import org.ros.rosjava.roslaunch.ArgumentParser;
 import org.ros.rosjava.roslaunch.logging.PrintLog;
 import org.ros.rosjava.roslaunch.parsing.Attribute;
 import org.ros.rosjava.roslaunch.parsing.SubstitutionArgs;
+import org.ros.rosjava.roslaunch.xmlrpc.GetParamResponse;
 import org.ros.rosjava.roslaunch.xmlrpc.RosXmlRpcClient;
 import org.ros.rosjava.roslaunch.xmlrpc.SystemStateResponse;
 import org.w3c.dom.Element;
@@ -646,7 +647,13 @@ public class RosUtil
 		{
 			try
 			{
-				uuid = client.getParam("/run_id");
+				GetParamResponse response = client.getParam("/run_id");
+				if (response != null) {
+					uuid = (String)response.getParamValue();
+				}
+				else {
+					throw new Exception("Failed to get uuid...");
+				}
 			}
 			catch (Exception e)
 			{

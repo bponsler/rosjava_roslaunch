@@ -56,14 +56,14 @@ public class ObjectToXml
 			@SuppressWarnings("unchecked")
 			List<Object> list = (List<Object>)obj;
 
-			String xml = "<array><data>";
+			String xml = "<value><array><data>";
 
 			// Convert each time into a list
 			for (Object item : list) {
 				xml += objectToXml(item);
 			}
 
-			xml += "</data></array>";
+			xml += "</data></array></value>";
 
 			return xml;
 		}
@@ -104,6 +104,8 @@ public class ObjectToXml
 	 */
 	public static boolean isBoolean(final Object obj)
 	{
+		if (obj == null) return false;
+
 		try
 		{
 			@SuppressWarnings("unused")
@@ -123,6 +125,8 @@ public class ObjectToXml
 	 */
 	public static boolean isInteger(final Object obj)
 	{
+		if (obj == null) return false;
+
 		try
 		{
 			@SuppressWarnings("unused")
@@ -142,6 +146,8 @@ public class ObjectToXml
 	 */
 	public static boolean isDouble(final Object obj)
 	{
+		if (obj == null) return false;
+
 		try
 		{
 			@SuppressWarnings("unused")
@@ -161,6 +167,8 @@ public class ObjectToXml
 	 */
 	public static boolean isString(final Object obj)
 	{
+		if (obj == null) return false;
+
 		try
 		{
 			@SuppressWarnings("unused")
@@ -180,6 +188,8 @@ public class ObjectToXml
 	 */
 	public static boolean isList(final Object obj)
 	{
+		if (obj == null) return false;
+
 		try
 		{
 			@SuppressWarnings({ "unused", "unchecked" })
@@ -199,6 +209,8 @@ public class ObjectToXml
 	 */
 	public static boolean isMap(final Object obj)
 	{
+		if (obj == null) return false;
+
 		try
 		{
 			@SuppressWarnings({ "unused", "unchecked" })

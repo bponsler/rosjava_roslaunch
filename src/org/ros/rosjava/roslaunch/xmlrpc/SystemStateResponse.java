@@ -13,13 +13,13 @@ public class SystemStateResponse extends RosXmlRpcResponseBase
 	/** The status message. */
 	protected String m_statusMessage;
 	/** The system state value. */
-	protected String m_systemState;
-	
+	protected Object m_systemState;
+
 	/**
 	 * Constructor
 	 *
 	 * Create a SystemStateResponse object from an XMLRPC response.
-	 * 
+	 *
 	 * @param other is the RosXmlRpcResponseBase object
 	 */
 	public SystemStateResponse(final RosXmlRpcResponseBase other)
@@ -44,53 +44,53 @@ public class SystemStateResponse extends RosXmlRpcResponseBase
 		//     </param>
 		//   </params>
 		// </methodResponse>
-		
+
 		// The return parameters are as follows:
 		//     status code, status message, and system state
 		m_code = -1;
 		m_statusMessage = "Failed to parse";
 		m_systemState = "";
-		
+
 		// There should be exactly three response items
 		if (m_responseData.size() == 3)
 		{
-			m_code = Integer.parseInt(m_responseData.get(0));
-			m_statusMessage = m_responseData.get(1);
+			m_code = (Integer)m_responseData.get(0);
+			m_statusMessage = (String)m_responseData.get(1);
 			m_systemState = m_responseData.get(2);
 		}
-		
+
 		// Check for success
 		if (m_code != 1) {
 			throw new RuntimeException("ERROR: " + m_statusMessage);
 		}
 	}
-	
+
 	/**
 	 * Get the response code.
-	 * 
+	 *
 	 * @return the response code
 	 */
 	public int getCode()
 	{
 		return m_code;
 	}
-	
+
 	/**
 	 * Get the status message.
-	 * 
+	 *
 	 * @return the status message
 	 */
 	public String getStatusMessage()
 	{
 		return m_statusMessage;
 	}
-	
+
 	/**
 	 * Get the system state value.
-	 * 
+	 *
 	 * @return the system state
 	 */
-	public String getSystemState()
+	public Object getSystemState()
 	{
 		// System state is in the form of a list, e.g.:
 		//     [publishers, subscribers, services]

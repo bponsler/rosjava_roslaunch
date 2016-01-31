@@ -73,11 +73,20 @@ public class RosXmlRpcClient
 	 *
 	 * @param param is the name of the parameter to request
 	 * @return the value of the parameter
+	 * @throws Exception if the request fails
 	 */
-	public String getParam(final String param)
+	public GetParamResponse getParam(final String param) throws Exception
 	{
-		// TODO: finish implementing this request
-		return null;
+		String data = "";
+		data += "<methodCall>";
+		data += "  <methodName>getParam</methodName>";
+		data += "  <params>";
+		data += "    <param><value><string>" + m_name + "</string></value></param>";
+		data += "    <param><value><string>" + param + "</string></value></param>";
+		data += "  </params>";
+		data += "</methodCall>";
+
+		return new GetParamResponse(sendXmlRpcData(data));
 	}
 
 	/**
