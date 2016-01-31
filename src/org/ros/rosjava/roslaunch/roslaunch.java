@@ -18,7 +18,6 @@ import org.ros.rosjava.roslaunch.util.Util;
 // TODO: support env tag inside machine
 // TODO: handle logging, check log file size
 // TODO: test nodes are not implemented
-// TODO: do i need to register core/non-core processes?
 // TODO: should the launch stop if the master it ran is killed?
 
 /**

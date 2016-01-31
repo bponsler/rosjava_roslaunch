@@ -240,7 +240,9 @@ public class ProcessMonitor
 		{
 			//// Node should not be respawned
 
-			// TODO: unregister the node
+			// Remove the fully dead process from the set of
+			// processes to monitor
+			m_processes.remove(deadProc);
 
 			// Stop the process
 			deadProc.destroy();
