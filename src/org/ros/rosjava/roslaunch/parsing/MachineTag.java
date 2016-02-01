@@ -19,6 +19,9 @@ import org.w3c.dom.NodeList;
  */
 public class MachineTag extends BaseTag
 {
+	/** The default SSH port. */
+	public static final int DEFAULT_SSH_PORT = 22;
+
 	/** The name of the machine. */
 	private String m_name;
 	/** The address of the machine. */
@@ -70,7 +73,7 @@ public class MachineTag extends BaseTag
 		m_default = "";
 		m_username = "";
 		m_password = "";
-		m_sshPort = 22;
+		m_sshPort = DEFAULT_SSH_PORT;
 		m_timeout = 10;
 
 		m_env = new HashMap<String, String>();
@@ -187,7 +190,7 @@ public class MachineTag extends BaseTag
 
 		// Support ssh-port attribute (optional, default 22) which is
 		// not mentioned in online documentation, but is supported in code
-		m_sshPort = 22;
+		m_sshPort = DEFAULT_SSH_PORT;
 		if (machine.hasAttribute(Attribute.SSH_Port.val()))
 		{
 			String portStr = machine.getAttribute(Attribute.SSH_Port.val());

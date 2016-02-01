@@ -69,7 +69,8 @@ public class RosLaunchRunner
 		m_logger = FileLog.getLogger("roslaunch.runner");
 
 		// Load the config
-		m_config = new LaunchConfig(m_parsedArgs, launchFiles);
+		m_config = new LaunchConfig(
+				m_runId, m_parsedArgs, launchFiles);
 
 		// Create the process monitor
 		m_processMonitor = new ProcessMonitor();
@@ -116,9 +117,13 @@ public class RosLaunchRunner
 			// Now set all the parameters
 			m_config.setParameters();
 
+			// Launch all remote nodes
+			List<RosProcessIF> remoteProcesses = m_config.launchRemoteNodes();
+			m_processMonitor.addProcesses(remoteProcesses);
+
 			// Then start all the non-core nodes
-			List<RosProcess> processes = m_config.launchNodes();
-			m_processMonitor.addProcesses(processes);
+			List<RosProcessIF> localProcesses = m_config.launchLocalNodes();
+			m_processMonitor.addProcesses(localProcesses);
 		}
 		catch (Exception e)
 		{
@@ -179,7 +184,7 @@ public class RosLaunchRunner
 		}
 
 		// Launch all core nodes
-		List<RosProcess> processes = m_config.launchCoreNodes();
+		List<RosProcessIF> processes = m_config.launchCoreNodes();
 		m_processMonitor.addProcesses(processes);
 
 		// TODO: handle child
@@ -237,10 +242,11 @@ public class RosLaunchRunner
 		}
 
 		// Do not print the master streams
-		RosProcess rosMaster = new RosProcess(
+		RosLocalProcess rosMaster = new RosLocalProcess(
 				"rosmaster",
 				master,
 				command,  // command used to run this process
+				m_runId,
 				true,  // this is a core process
 				true,  // roslaunch does not require this node
 				false);  // do not print output streams to the screen

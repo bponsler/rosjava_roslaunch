@@ -510,6 +510,16 @@ public class NodeTag extends BaseTag
 	}
 
 	/**
+	 * Determine if this node is a 'log' output type.
+	 *
+	 * @return true if 'log' output
+	 */
+	public boolean isLogOutput()
+	{
+		return (m_output.compareTo(LOG_OUTPUT) == 0);
+	}
+
+	/**
 	 * Get the path to the current working directory for this node.
 	 *
 	 * @return the path to the current working directory for this node

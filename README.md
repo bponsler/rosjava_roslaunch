@@ -20,3 +20,5 @@ This project currently requires the following libraries:
     download the jar from https://commons.apache.org/proper/commons-codec/download_codec.cgi
   - SnakeYaml:
     download the jar from http://repo1.maven.org/maven2/org/yaml/snakeyaml/1.16/
+  - JSch
+    download the jar from http://www.jcraft.com/jsch/

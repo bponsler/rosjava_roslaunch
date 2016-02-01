@@ -385,20 +385,17 @@ public class RosUtil
 			while (interfaces.hasMoreElements())
 			{
 				NetworkInterface ifc = interfaces.nextElement();
-				if(ifc.isUp())
+				Enumeration<InetAddress> addresses = ifc.getInetAddresses();
+				while (addresses.hasMoreElements())
 				{
-					Enumeration<InetAddress> addresses = ifc.getInetAddresses();
-					while (addresses.hasMoreElements())
-					{
-						InetAddress address = addresses.nextElement();
+					InetAddress address = addresses.nextElement();
 
-						// Determine what type of address this is
-						if (useIpv6 && address instanceof Inet6Address) {
-							localAddresses.add(address);
-						}
-						else if (address instanceof Inet4Address) {
-							localAddresses.add(address);
-						}
+					// Determine what type of address this is
+					if (useIpv6 && address instanceof Inet6Address) {
+						localAddresses.add(address);
+					}
+					else if (address instanceof Inet4Address) {
+						localAddresses.add(address);
 					}
 				}
 			}
@@ -805,5 +802,30 @@ public class RosUtil
 		catch (Exception e) {
 			// Ignore errors while calculating size
 		}
+	}
+
+	/**
+	 * Get the path to the log file used for a process.
+	 *
+	 * @param processName the name of the process
+	 * @param uuid the UUID for the launch process
+	 * @return the path to the corresponding log file
+	 */
+	public static String getProcessLogFile(
+			final String processName, final String uuid)
+	{
+		// Grab the directory where the log file will be stored
+		File rosLogDir = RosUtil.getRosLogDir();
+		File logDir = new File(rosLogDir, uuid);
+
+		// Create the log file name from the process name
+		String logFileName = processName.replace("/", "-") + ".log";
+
+		// Remove the starting slash, if one exists
+		if (logFileName.startsWith("/")) {
+			logFileName = logFileName.substring(1);
+		}
+
+		return new File(logDir, logFileName).getAbsolutePath();
 	}
 }

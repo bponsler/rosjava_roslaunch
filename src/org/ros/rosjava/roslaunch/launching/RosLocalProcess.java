@@ -1,9 +1,9 @@
 package org.ros.rosjava.roslaunch.launching;
 
 import java.io.File;
-import java.io.IOException;
 
 import org.ros.rosjava.roslaunch.logging.PrintLog;
+import org.ros.rosjava.roslaunch.util.RosUtil;
 import org.ros.rosjava.roslaunch.util.StreamPrinter;
 import org.ros.rosjava.roslaunch.util.Util;
 
@@ -12,14 +12,17 @@ import org.ros.rosjava.roslaunch.util.Util;
  *
  * This class encapsulates a named running process and provides the
  * ability to print the stdout and stderr streams of the process
- * to the console.
+ * to the console. This class implements the RosProcessIF to
+ * monitor a process running on a local machine.
  */
-public class RosProcess
+public class RosLocalProcess implements RosProcessIF
 {
 	/** The name of the process. */
 	private String m_name;
 	/** The running process. */
 	private Process m_process;
+	/** The UUID for the launch process. */
+	private String m_uuid;
 
 	/** The command used to run this process. */
 	private String m_command;
@@ -53,20 +56,23 @@ public class RosProcess
 	 * @param name the name of the process
 	 * @param process the Process
 	 * @param command is the array of arguments used to execute this process
+	 * @param uuid is the UUID for the launch process
 	 * @param required true if this is a required process, false otherwise
 	 * @param printStreams true if the stdout and stderr
 	 *        streams should be printed to the console
 	 */
-	public RosProcess(
+	public RosLocalProcess(
 			final String name,
 			final Process process,
 			final String[] command,
+			final String uuid,
 			final boolean isCore,
 			final boolean required,
 			final boolean printStreams)
 	{
 		m_name = name;
 		m_process = process;
+		m_uuid = uuid;
 		m_isCore = isCore;
 		m_required = required;
 		m_printStreams = printStreams;
@@ -94,7 +100,7 @@ public class RosProcess
 		m_workingDir = null;
 
 		// Print stdout, and stderr for this process to the console
-		setupPrintStreams();
+		setupPrintStreams(false);  // do not append initially
 	}
 
 	/**
@@ -133,9 +139,21 @@ public class RosProcess
 	 *
 	 * @return the name
 	 */
+	@Override
 	public String getName()
 	{
 		return m_name;
+	}
+
+	/**
+	 * Set the name of the process.
+	 *
+	 * @param name the new name
+	 */
+	@Override
+	public void setName(final String name)
+	{
+		m_name = name;
 	}
 
 	/**
@@ -143,6 +161,7 @@ public class RosProcess
 	 *
 	 * @return true if this is a required node
 	 */
+	@Override
 	public boolean isRequired()
 	{
 		return m_required;
@@ -153,6 +172,7 @@ public class RosProcess
 	 *
 	 * @return true if this node should be respawned
 	 */
+	@Override
 	public boolean shouldRespawn()
 	{
 		return m_respawn;
@@ -163,6 +183,7 @@ public class RosProcess
 	 *
 	 * @return the respawn delay (in seconds)
 	 */
+	@Override
 	public float getRespawnDelaySeconds()
 	{
 		return m_respawnDelaySeconds;
@@ -199,6 +220,7 @@ public class RosProcess
 	 *
 	 * @return the human readable description of the exit code
 	 */
+	@Override
 	public String getExitCodeDescription()
 	{
 		Integer exitCode = getExitCode();
@@ -215,7 +237,12 @@ public class RosProcess
 				output = "process has finished cleanly";
 			}
 
-			// TODO: include location of log file in output
+			// Add print about the log file, if one is in use
+			if (!m_printStreams)
+			{
+				String logFile = RosUtil.getProcessLogFile(m_name, m_uuid);
+				output += "\nlog file: " + logFile;
+			}
 
 			return output;
 		}
@@ -250,38 +277,48 @@ public class RosProcess
 	/**
 	 * Restart the process.
 	 *
-	 * @throws IOException if there is an error while starting the process
+	 * @throws Exception if there is an error while starting the process
 	 */
-	public void restart() throws IOException
+	@Override
+	public void restart() throws Exception
 	{
+		// Replace the previous log file argument with the
+		// path to the latest log file
+		replaceOldLogArgument();
+
 		m_process.destroy();
 		m_process = Runtime.getRuntime().exec(m_command, m_envp, m_workingDir);
 
 		printStartMessage();
 
 		// Set up the streams for this process
-		setupPrintStreams();
+		setupPrintStreams(true);  // append when respawning
 	}
 
 	/**
 	 * Destroy this process (i.e., stop it from running).
 	 */
+	@Override
 	public void destroy()
 	{
 		m_process.destroy();
 
-		if (m_stderrPrinter != null) {
+		if (m_stderrPrinter != null)
+		{
 			m_stderrPrinter.stopPrinting();
 			m_stderrPrinter.interrupt();
 			m_stderrPrinter = null;
 		}
-		if (m_stdoutPrinter != null) {
+
+		if (m_stdoutPrinter != null)
+		{
 			m_stdoutPrinter.stopPrinting();
 			m_stdoutPrinter.interrupt();
 			m_stdoutPrinter = null;
 		}
 	}
 
+	@Override
 	public boolean isRunning()
 	{
 		try {
@@ -300,6 +337,7 @@ public class RosProcess
 	 *
 	 * @throws InterruptedException
 	 */
+	@Override
 	public void waitFor() throws InterruptedException
 	{
 		m_process.waitFor();
@@ -307,20 +345,59 @@ public class RosProcess
 
 	/**
 	 * Set up the print streams for this process.
+	 *
+	 * @param append true to append to the log files, false otherwise
 	 */
-	private void setupPrintStreams()
+	private void setupPrintStreams(final boolean append)
 	{
 		if (m_printStreams)
 		{
 			m_stderrPrinter = new StreamPrinter(m_process.getErrorStream());
 			m_stdoutPrinter = new StreamPrinter(m_process.getInputStream());
+		}
+		else
+		{
+			// Create names for both stdout and stderr log files
+			String logName = RosUtil.getProcessLogFile(m_name, m_uuid);
+			String stdoutLogFile = logName.replace(".log", "-stdout.log");
+			String stderrLogFile = logName.replace(".log", "-stderr.log");
 
-			m_stderrPrinter.start();
-			m_stdoutPrinter.start();
+			m_stderrPrinter = new StreamPrinter(
+				m_process.getErrorStream(), m_uuid, stdoutLogFile, append);
+			m_stdoutPrinter = new StreamPrinter(
+				m_process.getErrorStream(), m_uuid, stderrLogFile, append);
 		}
-		else {
-			m_stderrPrinter = null;
-			m_stdoutPrinter = null;
+
+		m_stderrPrinter.start();
+		m_stdoutPrinter.start();
+	}
+
+	/**
+	 * Replace the old __log command line argument to the node with
+	 * the path to the latest log file. This is supposed to be used
+	 * when respawning the node as the name of the process changes
+	 * with each respawn.
+	 */
+	private void replaceOldLogArgument()
+	{
+		int index = 0;
+		String command = "";
+		for (String arg : m_command.split(" "))
+		{
+			if (index++ > 0) command += " ";  // Separate each arg with a space
+
+			// Check if this is the log argument
+			if (arg.startsWith("__log:="))
+			{
+				// Replace the old log file with the new log file
+				String logName = RosUtil.getProcessLogFile(m_name, m_uuid);
+				command += "__log:=" + logName;
+			}
+			else {
+				// Not the log argument -- use as is
+				command += arg;
+			}
 		}
+		m_command = command;
 	}
 }

@@ -17,17 +17,20 @@ import org.ros.rosjava.roslaunch.logging.PrintLog;
  */
 public class ProcessMonitor
 {
+	/** A counter for the number of nodes launched. */
+	private static int LAUNCHED_NODES_COUNTER = 1;
+
 	/** The List of running RosProcesses that will be monitored. */
-	List<RosProcess> m_processes;
+	List<RosProcessIF> m_processes;
 	/** The List of running RosProcesses that are dead. */
-	List<RosProcess> m_deadProcesses;
+	List<RosProcessIF> m_deadProcesses;
 	/** The Map from running RosProcesses that are being respawned to time of death. */
-	Map<RosProcess, Long> m_respawningProcesses;
+	Map<RosProcessIF, Long> m_respawningProcesses;
 
 	/** True if the process monitor has been shutdown, or detected that it needs to shutdown. */
 	private boolean m_isShutdown;
 
-	/** Semaphore for locking protecting process monitor data. */
+	/** Semaphore for protecting process monitor data. */
 	private Semaphore m_semaphore;
 
 	/**
@@ -39,9 +42,9 @@ public class ProcessMonitor
 	{
 		m_isShutdown = false;
 		m_semaphore = new Semaphore(1);
-		m_processes = new ArrayList<RosProcess>();
-		m_deadProcesses = new ArrayList<RosProcess>();
-		m_respawningProcesses = new HashMap<RosProcess, Long>();
+		m_processes = new ArrayList<RosProcessIF>();
+		m_deadProcesses = new ArrayList<RosProcessIF>();
+		m_respawningProcesses = new HashMap<RosProcessIF, Long>();
 	}
 
 	/**
@@ -49,7 +52,7 @@ public class ProcessMonitor
 	 *
 	 * @param process the List of RosProcesses to monitor
 	 */
-	public void addProcesses(final List<RosProcess> processes)
+	public void addProcesses(final List<RosProcessIF> processes)
 	{
 		m_processes.addAll(processes);
 	}
@@ -59,7 +62,7 @@ public class ProcessMonitor
 	 *
 	 * @param process the RosProcess to monitor
 	 */
-	public void addProcess(final RosProcess process)
+	public void addProcess(final RosProcessIF process)
 	{
 		m_processes.add(process);
 	}
@@ -110,7 +113,7 @@ public class ProcessMonitor
 		if (!m_isShutdown)
 		{
 			// Kill all running processes
-			for (RosProcess proc : m_processes)
+			for (RosProcessIF proc : m_processes)
 			{
 				if (proc.isRunning()) {
 					PrintLog.info("[" + proc.getName() + "] killing on exit");
@@ -119,11 +122,11 @@ public class ProcessMonitor
 			}
 
 			// Wait for all processes to stop
-			for (RosProcess proc : m_processes)
+			for (RosProcessIF proc : m_processes)
 			{
 				try {
 					proc.waitFor();
-				} catch (InterruptedException e) {
+				} catch (Exception e) {
 					PrintLog.error("Error while waiting for process to stop: " + e.getMessage());
 				}
 			}
@@ -150,14 +153,14 @@ public class ProcessMonitor
 		if (!m_isShutdown)
 		{
 			// Map dead processes to their time of death
-			Map<RosProcess, Long> diedProcesses = findDiedProcesses();
+			Map<RosProcessIF, Long> diedProcesses = findDiedProcesses();
 			if (diedProcesses == null || m_isShutdown) {
 				return;  // Likely lost a required process
 			}
 
 			// Handle all of the non-required processes that
 			// have died during this cycle
-			for (RosProcess deadProc : diedProcesses.keySet()) {
+			for (RosProcessIF deadProc : diedProcesses.keySet()) {
 				handleNonReqDeadProcess(deadProc, diedProcesses.get(deadProc));
 			}
 
@@ -171,13 +174,13 @@ public class ProcessMonitor
 	 *
 	 * @return the Map of RosProcesses to their time of death (in nano time)
 	 */
-	private Map<RosProcess, Long> findDiedProcesses()
+	private Map<RosProcessIF, Long> findDiedProcesses()
 	{
 		// Map dead processes to their time of death
-		Map<RosProcess, Long> diedProcesses = new HashMap<RosProcess, Long>();
+		Map<RosProcessIF, Long> diedProcesses = new HashMap<RosProcessIF, Long>();
 
 		// Monitor all known processes
-		for (RosProcess proc : m_processes)
+		for (RosProcessIF proc : m_processes)
 		{
 			// Ignore fully dead processes, and still running processes
 			if (!m_deadProcesses.contains(proc) && !proc.isRunning())
@@ -228,7 +231,7 @@ public class ProcessMonitor
 	 * @param deadProc the non-required process that died
 	 * @param timeOfDetah the nano time when the process died
 	 */
-	private void handleNonReqDeadProcess(final RosProcess deadProc, final Long timeOfDeath)
+	private void handleNonReqDeadProcess(final RosProcessIF deadProc, final Long timeOfDeath)
 	{
 		// Determine if this node should be respawned
 		if (deadProc.shouldRespawn())
@@ -255,8 +258,8 @@ public class ProcessMonitor
 	private void handleRespawningProcesses()
 	{
 		// Check all respawning processes
-		Map<RosProcess, Long> stillRespawning = new HashMap<RosProcess, Long>();
-		for (RosProcess respawn : m_respawningProcesses.keySet())
+		Map<RosProcessIF, Long> stillRespawning = new HashMap<RosProcessIF, Long>();
+		for (RosProcessIF respawn : m_respawningProcesses.keySet())
 		{
 			Long timeOfDeath = m_respawningProcesses.get(respawn);
 
@@ -269,6 +272,10 @@ public class ProcessMonitor
 			float respawnDelaySeconds = respawn.getRespawnDelaySeconds();
 			if (secondsSinceDeath >= respawnDelaySeconds)
 			{
+				// Update the name of the process with a new counter value
+				String newName = getNewProcessName(respawn);
+				respawn.setName(newName);
+
 				PrintLog.info("[" + respawn.getName() + "] restarting process");
 
 				// Restart the process
@@ -290,5 +297,45 @@ public class ProcessMonitor
 		// Keep the list of processes that are still respawning around
 		// for the next cycle
 		m_respawningProcesses = stillRespawning;
+	}
+
+	/**
+	 * Get the name of a process.
+	 *
+	 * @param name The base name of the process
+	 * @return the name of the process
+	 */
+	public static String getProcessName(final String name)
+	{
+		// Remove a starting slash, if found
+		String cleanName = name;
+		if (name.startsWith("/")) {
+			cleanName = name.substring(1);
+		}
+
+		return cleanName + "-" + LAUNCHED_NODES_COUNTER++;
+	}
+
+	/**
+	 * Get the new name of a process.
+	 *
+	 * @param process the process
+	 * @return the new name for the process
+	 */
+	private String getNewProcessName(final RosProcessIF process)
+	{
+		String name = process.getName();
+
+		// The name should have the format: name-X where x is the counter
+		// that we are trying to replace with a new value
+
+		// Find the right most dash character
+		int index = name.lastIndexOf("-");
+		if (index != -1) {
+			name = name.substring(0, index);
+		}
+
+		// Return the process name with the new counter
+		return getProcessName(name);
 	}
 }

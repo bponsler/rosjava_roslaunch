@@ -16,7 +16,8 @@ public enum EnvVar
 	ROS_MASTER_URI,
 	ROS_NAMESPACE,
 	ROS_PACKAGE_PATH,
-	ROS_ROOT;
+	ROS_ROOT,
+	ROSLAUNCH_SSH_UNKNOWN;
 
 	/**
 	 * Get the value of the environment variable.

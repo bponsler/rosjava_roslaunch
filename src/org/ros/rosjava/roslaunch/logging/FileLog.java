@@ -124,14 +124,19 @@ public class FileLog
 	 *
 	 * Create a FileLog object.
 	 *
-	 * @param uuid the UUID used to create the log file name
+	 * @param subDirName is the name of the log sub directory to create
+	 * @param filename is the name of the log file to create
+	 * @param append true to append to a pre-existing log file, false to overwrite
 	 */
-	private FileLog(final String uuid)
+	private FileLog(
+			final String subDirName,
+			final String filename,
+			final boolean append)
 	{
 		// The log file should be stored under the ROS log directory
 		// within a sub folder with the same name as the UUID
 		File rosLogDir = RosUtil.getRosLogDir();
-		File logDir = new File(rosLogDir, uuid);
+		File logDir = new File(rosLogDir, subDirName);
 
 		// Create the log directory if it exists
 		if (!logDir.exists())
@@ -145,12 +150,6 @@ public class FileLog
 				return;
 			}
 		}
-
-		// Grab the hostname, and PID for use in the log filename
-		String hostname = RosUtil.getLocalHostName();
-		int pid = Util.getPid();
-
-		String filename = LOG_NAME + "-" + hostname + "-" + pid + ".log";
 
 		// Create the log file in the log directory
 		File logFile = new File(logDir, filename);
@@ -168,14 +167,12 @@ public class FileLog
 		try
 		{
 			File file = new File(m_filename);
-			FileWriter fw = new FileWriter(file);
+			FileWriter fw = new FileWriter(file, append);
 			m_writer = new PrintWriter(fw);
 		}
 		catch (IOException e) {
 			// Do not print errors
 		}
-
-		PrintLog.info("... logging to " + m_filename);
 	}
 
 	/**
@@ -186,8 +183,33 @@ public class FileLog
 	 */
 	public static boolean configure(final String uuid)
 	{
-		m_instance = new FileLog(uuid);
+		// Grab the hostname, and PID for use in the log filename
+		String hostname = RosUtil.getLocalHostName();
+		int pid = Util.getPid();
+
+		String filename = LOG_NAME + "-" + hostname + "-" + pid + ".log";
+
+		// Create the new log file
+		m_instance = new FileLog(uuid, filename, false);  // overwrite
+		PrintLog.info("... logging to " + filename);
+
 		return m_instance.isOpen();
+	}
+
+	/**
+	 * Create a new log file.
+	 *
+	 * @param uuid the UUID for the launch process
+	 * @param filename the name of the log file to create
+	 * @param append true to append to a pre-existing log file, false to overwrite
+	 * @return the LogFile object
+	 */
+	public static FileLog create(
+			final String uuid,
+			final String filename,
+			final boolean append)
+	{
+		return new FileLog(uuid, filename, append);
 	}
 
 	/**
@@ -255,14 +277,8 @@ public class FileLog
 	 */
 	public static void close()
 	{
-		if (m_instance != null)
-		{
-			if (m_instance.m_writer != null)
-			{
-				m_instance.m_writer.close();
-				m_instance.m_writer = null;
-				m_instance.m_filename = "";
-			}
+		if (m_instance != null) {
+			m_instance.closeLog();
 		}
 	}
 
@@ -316,5 +332,30 @@ public class FileLog
 	{
 		DateFormat dateFormat = new SimpleDateFormat(TIMESTAMP_FORMAT);
 		return dateFormat.format(new Date());
+	}
+
+	/**
+	 * Write the given message to the log file with no prefix.
+	 *
+	 * @param message the message
+	 */
+	public void write(final String message)
+	{
+		if (m_writer != null) {
+			m_writer.write(message);
+		}
+	}
+
+	/**
+	 * Close the log file.
+	 */
+	public void closeLog()
+	{
+		if (m_writer != null)
+		{
+			m_writer.close();
+			m_writer = null;
+			m_filename = "";
+		}
 	}
 }

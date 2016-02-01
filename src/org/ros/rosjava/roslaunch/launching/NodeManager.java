@@ -14,6 +14,7 @@ import org.ros.rosjava.roslaunch.parsing.IncludeTag;
 import org.ros.rosjava.roslaunch.parsing.LaunchFile;
 import org.ros.rosjava.roslaunch.parsing.NodeTag;
 import org.ros.rosjava.roslaunch.util.EnvVar;
+import org.ros.rosjava.roslaunch.util.RosUtil;
 
 /**
  * The NodeManager class
@@ -23,9 +24,6 @@ import org.ros.rosjava.roslaunch.util.EnvVar;
  */
 public class NodeManager
 {
-	/** A counter for the number of nodes launched. */
-	private static int LAUNCHED_NODES_COUNTER = 1;
-
 	/**
 	 * Get the List of NodeTags defined in the tree defined by
 	 * the given List of LaunchFiles.
@@ -180,24 +178,27 @@ public class NodeManager
 	 *
 	 * @param parsedArgs the parsed command line arguments
 	 * @param nodes the List of NodeTags to launch
+	 * @param uuid is the UUID for the launch process
 	 * @param masterUri the URI to reach the ROS master server
 	 * @param isCore true if these are core nodes
 	 * @return the List of RosProcesses that were launched
 	 */
-	public static List<RosProcess> launchNodes(
+	public static List<RosProcessIF> launchNodes(
 			final ArgumentParser parsedArgs,
 			final List<NodeTag> nodes,
+			final String uuid,
 			final String masterUri,
 			final boolean isCore)
 	{
-		List<RosProcess> processes = new ArrayList<RosProcess>();
+		List<RosProcessIF> processes = new ArrayList<RosProcessIF>();
 
 		// Launch all of the nodes contained in the list
 		for (NodeTag node : nodes)
 		{
 			if (node.isEnabled())
 			{
-				RosProcess rosProc = launchNode(parsedArgs, node, isCore, masterUri);
+				RosLocalProcess rosProc = launchNode(
+						parsedArgs, node, uuid, isCore, masterUri);
 				if (rosProc != null) {
 					processes.add(rosProc);
 				}
@@ -212,19 +213,22 @@ public class NodeManager
 	 *
 	 * @param parsedArgs the parsed command line arguments
 	 * @param node the NodeTag to launch
+	 * @param uuid is the UUID for the launch process
 	 * @param isCore true if this is a core node
 	 * @param masterUri the URI to read the ROS master server
 	 * @return the RosProcess that was launched
 	 */
-	private static RosProcess launchNode(
+	private static RosLocalProcess launchNode(
 			final ArgumentParser parsedArgs,
 			final NodeTag node,
+			final String uuid,
 			final boolean isCore,
 			final String masterUri)
 	{
-		RosProcess rosProc = null;
+		RosLocalProcess rosProc = null;
 		try {
-			rosProc = createNodeProcess(parsedArgs, node, isCore, masterUri);
+			rosProc = createNodeProcess(
+				parsedArgs, node, uuid, isCore, masterUri);
 		}
 		catch (IOException e)
 		{
@@ -250,11 +254,13 @@ public class NodeManager
 	 * @param node the NodeTag
 	 * @param addNamespace true if the namespace should be added as
 	 *        a prefix before the node executable or not
+	 * @param logFile is the log file to add to the arguments, or null if it's ignored
 	 * @return the array of command line arguments
 	 */
 	public static String[] getNodeCommandLine(
 			final NodeTag node,
-			final boolean addNamespace)
+			final boolean addNamespace,
+			final String logFile)
 	{
 		String name = node.getName();
 
@@ -309,6 +315,12 @@ public class NodeManager
 			fullCommand.add(arg);
 		}
 
+		// Pass the log file to the node process if one is given,
+		// and the node is logging to a file
+		if (logFile != null && node.isLogOutput()) {
+			fullCommand.add("__log:=" + logFile);
+		}
+
 		// Create the array to launch the command
 		String[] command = new String[fullCommand.size()];
 		fullCommand.toArray(command);
@@ -321,19 +333,28 @@ public class NodeManager
 	 *
 	 * @param parsedArgs the parsed command line arguments
 	 * @param node the NodeTag to run
+	 * @param uuid is the UUID for the launch process
 	 * @param isCore true if this is a core process, false otherwise
 	 * @param masterUri the URI to reach the ROS master server
 	 * @return the corresponding RosProcess
 	 * @throws IOException
 	 */
-	private static RosProcess createNodeProcess(
+	private static RosLocalProcess createNodeProcess(
 			final ArgumentParser parsedArgs,
 			final NodeTag node,
+			final String uuid,
 			final boolean isCore,
 			final String masterUri) throws IOException
 	{
+
+		// Add a counter to the name to avoid collisions between names
+		String processName = ProcessMonitor.getProcessName(node.getResolvedName());
+
+		// Grab the path to the log file for this process
+		String logFile = RosUtil.getProcessLogFile(processName, uuid);
+
 		// Get the command line call to execute the node
-		String[] command = getNodeCommandLine(node, false);
+		String[] command = getNodeCommandLine(node, false, logFile);
 
 		// Get the environment variables for this node
 		String[] envp = getNodeEnvironment(node, masterUri);
@@ -346,9 +367,6 @@ public class NodeManager
 		//       will launch the process with whatever the default values are
 		Process proc = Runtime.getRuntime().exec(command, envp, workingDir);
 
-		// Add a counter to the name to avoid collisions between names
-		String processName = node.getResolvedName() + "-" + LAUNCHED_NODES_COUNTER++;
-
 		boolean printStreams = node.isScreenOutput();
 
 		// If the screen argument is active, then the output of all
@@ -357,10 +375,11 @@ public class NodeManager
 			printStreams = true;
 		}
 
-		RosProcess rosProc = new RosProcess(
+		RosLocalProcess rosProc = new RosLocalProcess(
 				processName,
 				proc,
 				command,
+				uuid,
 				isCore,
 				node.isRequired(),
 				printStreams);

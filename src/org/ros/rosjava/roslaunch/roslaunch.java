@@ -436,7 +436,7 @@ public class roslaunch
 					if (name.compareTo(nodeName) == 0)
 					{
 						// Found the node -- print its command line arguments
-						String[] clArgs = NodeManager.getNodeCommandLine(node, true);
+						String[] clArgs = NodeManager.getNodeCommandLine(node, true, null);
 						for (String arg : clArgs) {
 							PrintLog.info(arg + " ");
 						}
@@ -505,6 +505,7 @@ public class roslaunch
 			{
 				logger.error(ExceptionUtils.getStackTrace(e));
 				PrintLog.error(e.getMessage());
+				PrintLog.error("The traceback for the exception was written to the log file");
 				return;
 			}
 
@@ -522,6 +523,7 @@ public class roslaunch
 				{
 					logger.error(ExceptionUtils.getStackTrace(e));
 					PrintLog.error("ERROR: launch failed: " + e.getMessage());
+					PrintLog.error("The traceback for the exception was written to the log file");
 					return;
 				}
 			}
@@ -535,6 +537,7 @@ public class roslaunch
 				{
 					logger.error(ExceptionUtils.getStackTrace(e));
 					PrintLog.error("ERROR: launch failed: " + e.getMessage());
+					PrintLog.error("The traceback for the exception was written to the log file");
 					return;
 				}
 

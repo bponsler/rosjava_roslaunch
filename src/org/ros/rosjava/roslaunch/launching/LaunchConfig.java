@@ -10,6 +10,7 @@ import java.util.TreeSet;
 
 import org.ros.rosjava.roslaunch.ArgumentParser;
 import org.ros.rosjava.roslaunch.logging.FileLog;
+import org.ros.rosjava.roslaunch.logging.FileLog.FileLogger;
 import org.ros.rosjava.roslaunch.logging.PrintLog;
 import org.ros.rosjava.roslaunch.parsing.GroupTag;
 import org.ros.rosjava.roslaunch.parsing.IncludeTag;
@@ -31,6 +32,8 @@ import org.ros.rosjava.roslaunch.util.RosUtil;
  */
 public class LaunchConfig
 {
+	/** The run id for this process. */
+	private String m_runId;
 	/** The parsed command line arguments. */
 	private ArgumentParser m_parsedArgs;
 	/** The MachineManager object. */
@@ -52,6 +55,8 @@ public class LaunchConfig
 	private List<NodeTag> m_nodes;
 	/** The List of all non-core local ROS nodes. */
 	private List<NodeTag> m_localNodes;
+	/** The List of all non-core remote ROS nodes. */
+	private List<NodeTag> m_remoteNodes;
 
 	/** The List of all ParamTags defined in the launch file tree. */
 	private List<ParamTag> m_params;
@@ -65,6 +70,9 @@ public class LaunchConfig
 	/** The List of unified namespaces to clear based on clear params settings. */
 	private List<String> m_unifiedClearParams;
 
+	/** FileLogger for this class. */
+	private FileLogger m_logger;
+
 	/**
 	 * Constructor
 	 *
@@ -74,11 +82,15 @@ public class LaunchConfig
 	 * @param launchFiles the List of non-core LaunchFiles
 	 */
 	public LaunchConfig(
+			final String runId,
 			final ArgumentParser parsedArgs,
 			final List<LaunchFile> launchFiles)
 	{
+		m_runId = runId;
 		m_parsedArgs = parsedArgs;
 		m_launchFiles = launchFiles;
+
+		m_logger = FileLog.getLogger("roslaunch.config");
 
 		// Check for the ROS master URI in the environment
 		m_uri = EnvVar.ROS_MASTER_URI.getReqNonEmpty();
@@ -126,6 +138,9 @@ public class LaunchConfig
 
 		// Keep a list of nodes that are local to this machine
 		m_localNodes = getLocalNodes();
+
+		// Keep a list of nodes that correspond to remote machines
+		m_remoteNodes = getRemoteNodes();
 	}
 
 	/**
@@ -290,13 +305,71 @@ public class LaunchConfig
 	 *
 	 * @return the List of corresponding RosProcesses launched
 	 */
-	public List<RosProcess> launchCoreNodes()
+	public List<RosProcessIF> launchCoreNodes()
 	{
 		return NodeManager.launchNodes(
 				m_parsedArgs,
 				m_coreNodes,
+				m_runId,
 				m_uri,
 				true);  // core nodes
+	}
+
+	/**
+	 * Launch all of the non-core nodes corresponding to remote machines.
+	 *
+	 * @return the List of corresponding RosProcesses launched
+	 */
+	public List<RosProcessIF> launchRemoteNodes()
+	{
+		List<RosProcessIF> processes = new ArrayList<RosProcessIF>();
+
+		if (!m_parsedArgs.hasLocal())
+		{
+			// Build a map of unique machines we are going to launch on
+			Map<String, MachineTag> machines = new HashMap<String, MachineTag>();
+			for (NodeTag remoteNode : m_remoteNodes)
+			{
+				MachineTag machine = remoteNode.getMachine();
+				machines.put(machine.getName(), machine);
+			}
+
+			// Launch remote machines
+			int machineIndex = 0;
+			for (String name : machines.keySet())
+			{
+				MachineTag machine = machines.get(name);
+
+				// Create a name for the machine
+				String machineName = machine.getAddress() + "-" + machineIndex;
+
+				String msg = "remote[" + machineName + "] starting roslaunch";
+				m_logger.info(msg);
+				PrintLog.info(msg);
+
+				// Create the remote process
+				RosRemoteProcess remoteProc = new RosRemoteProcess(
+						machineName, m_runId, m_uri, machine);
+
+				// Start the process
+				boolean success = remoteProc.start();
+				if (!success) {
+					throw new RuntimeException(
+						"unable to start remote roslaunch child: " + machineName);
+				}
+
+				machineIndex += 1;
+				processes.add(remoteProc);
+			}
+		}
+		else
+		{
+			PrintLog.bold("LOCAL");
+			PrintLog.bold("local only launch specified, will not launch remote nodes");
+			PrintLog.bold("LOCAL");
+		}
+
+        return processes;
 	}
 
 	/**
@@ -304,12 +377,13 @@ public class LaunchConfig
 	 *
 	 * @return the List of corresponding RosProcesses launched
 	 */
-	public List<RosProcess> launchNodes()
+	public List<RosProcessIF> launchLocalNodes()
 	{
 		// Only launch local nodes
 		return NodeManager.launchNodes(
 				m_parsedArgs,
 				m_localNodes,
+				m_runId,
 				m_uri,
 				false);  // non-core nodes
 	}
@@ -364,6 +438,26 @@ public class LaunchConfig
 		}
 
 		return localNodes;
+	}
+
+	/**
+	 * Get all of the nodes corresponding to remote machines.
+	 *
+	 * @return the List of remote NodeTags
+	 */
+	private List<NodeTag> getRemoteNodes()
+	{
+		List<NodeTag> remoteNodes = new ArrayList<NodeTag>();
+
+		for (NodeTag node : m_nodes)
+		{
+			MachineTag machine = node.getMachine();
+			if (machine != null && !m_machineManager.isLocal(machine)) {
+				remoteNodes.add(node);
+			}
+		}
+
+		return remoteNodes;
 	}
 
 	/**
