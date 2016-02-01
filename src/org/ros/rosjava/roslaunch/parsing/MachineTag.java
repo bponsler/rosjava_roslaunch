@@ -44,7 +44,7 @@ public class MachineTag extends BaseTag
 		Attribute.Name,
 		Attribute.Address,
 		Attribute.Env_Loader,
-		Attribute.Username,
+		Attribute.User,
 		Attribute.Password,
 		Attribute.Default,
 		Attribute.SSH_Port,
@@ -171,9 +171,9 @@ public class MachineTag extends BaseTag
 
 		// user (optional)
 		m_username = "";
-		if (machine.hasAttribute(Attribute.Username.val()))
+		if (machine.hasAttribute(Attribute.User.val()))
 		{
-			m_username = machine.getAttribute(Attribute.Username.val());
+			m_username = machine.getAttribute(Attribute.User.val());
 			m_username = SubstitutionArgs.resolve(m_username, argMap);
 		}
 
@@ -314,6 +314,16 @@ public class MachineTag extends BaseTag
 	}
 
 	/**
+	 * Set the username for this machine.
+	 *
+	 * @param username the username
+	 */
+	public void setUsername(final String username)
+	{
+		m_username = username;
+	}
+
+	/**
 	 * Get the password for this machine.
 	 *
 	 * @return the password
@@ -324,6 +334,16 @@ public class MachineTag extends BaseTag
 	}
 
 	/**
+	 * Set the password for this machine.
+	 *
+	 * @param password the password
+	 */
+	public void setPassword(final String password)
+	{
+		m_password = password;
+	}
+
+	/**
 	 * Get the SSH port for this machine.
 	 *
 	 * @return the SSH port
@@ -331,6 +351,16 @@ public class MachineTag extends BaseTag
 	public int getSshPort()
 	{
 		return m_sshPort;
+	}
+
+	/**
+	 * Set the SSH port to use when connecting to this machine.
+	 *
+	 * @param port the port
+	 */
+	public void setSshPort(final int port)
+	{
+		m_sshPort = port;
 	}
 
 	/**

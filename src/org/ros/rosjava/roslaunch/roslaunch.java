@@ -4,6 +4,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.ros.rosjava.roslaunch.launching.ArgManager;
 import org.ros.rosjava.roslaunch.launching.NodeManager;
 import org.ros.rosjava.roslaunch.launching.RosLaunchRunner;
@@ -202,7 +203,7 @@ public class roslaunch
 			}
 			catch (Exception e)
 			{
-				logger.error(e.getStackTrace().toString());
+				logger.error(ExceptionUtils.getStackTrace(e));
 				printUsage(e.getMessage());
 				return;
 			}
@@ -270,7 +271,7 @@ public class roslaunch
 			}
 			catch (Exception e)
 			{
-				logger.error(e.getStackTrace().toString());
+				logger.error(ExceptionUtils.getStackTrace(e));
 				printUsage(e.getMessage());
 				return;
 			}
@@ -325,7 +326,7 @@ public class roslaunch
 			}
 			catch (Exception e)
 			{
-				logger.error(e.getStackTrace().toString());
+				logger.error(ExceptionUtils.getStackTrace(e));
 				PrintLog.error("[" + f.getPath() + "]: " + e.getMessage());
 				return;  // Stop on any errors
 			}
@@ -502,7 +503,7 @@ public class roslaunch
 			}
 			catch (Exception e)
 			{
-				logger.error(e.getStackTrace().toString());
+				logger.error(ExceptionUtils.getStackTrace(e));
 				PrintLog.error(e.getMessage());
 				return;
 			}
@@ -519,7 +520,7 @@ public class roslaunch
 				}
 				catch (Exception e)
 				{
-					logger.error(e.getStackTrace().toString());
+					logger.error(ExceptionUtils.getStackTrace(e));
 					PrintLog.error("ERROR: launch failed: " + e.getMessage());
 					return;
 				}
@@ -532,7 +533,7 @@ public class roslaunch
 				}
 				catch (Exception e)
 				{
-					logger.error(e.getStackTrace().toString());
+					logger.error(ExceptionUtils.getStackTrace(e));
 					PrintLog.error("ERROR: launch failed: " + e.getMessage());
 					return;
 				}

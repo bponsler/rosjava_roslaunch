@@ -43,7 +43,7 @@ public enum Attribute
 	To,
 	Type,
 	Unless,
-	Username,
+	User,
 	Value;
 
 	/** The XML text value for the Attribute. */

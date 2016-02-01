@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.ros.rosjava.roslaunch.ArgumentParser;
 import org.ros.rosjava.roslaunch.logging.FileLog;
 import org.ros.rosjava.roslaunch.logging.FileLog.FileLogger;
@@ -282,7 +283,7 @@ public class RosLaunchRunner
 			}
 			catch (Exception e)
 			{
-				m_logger.error(e.getStackTrace().toString());
+				m_logger.error(ExceptionUtils.getStackTrace(e));
 				PrintLog.error("ERROR: unable to set " + RosUtil.RUN_ID_PARAM + ": " + e.getMessage());
 			}
 		}
@@ -309,7 +310,7 @@ public class RosLaunchRunner
 				catch (Exception e)
 				{
 					Object value = getResponse.getParamValue();
-					m_logger.error(e.getStackTrace().toString());
+					m_logger.error(ExceptionUtils.getStackTrace(e));
 					throw new RuntimeException(
 						"ERROR: retrieved invalid run_id from parameter server: " + value.toString());
 				}
