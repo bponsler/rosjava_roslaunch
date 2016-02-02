@@ -191,7 +191,7 @@ public class FileLog
 
 		// Create the new log file
 		m_instance = new FileLog(uuid, filename, false);  // overwrite
-		PrintLog.info("... logging to " + filename);
+		PrintLog.info("... logging to " + m_instance.getFilename());
 
 		return m_instance.isOpen();
 	}
@@ -332,6 +332,16 @@ public class FileLog
 	{
 		DateFormat dateFormat = new SimpleDateFormat(TIMESTAMP_FORMAT);
 		return dateFormat.format(new Date());
+	}
+
+	/**
+	 * Get the filename where this FileLog is being written to.
+	 *
+	 * @return the filename
+	 */
+	public String getFilename()
+	{
+		return m_filename;
 	}
 
 	/**
