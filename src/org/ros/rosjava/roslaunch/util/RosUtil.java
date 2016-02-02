@@ -794,9 +794,11 @@ public class RosUtil
 				PrintLog.error("WARNING: disk usage in log directory [" +
 							   rosLogDir.getAbsolutePath() + "] is over 1GB.");
 				PrintLog.error("It's recommended that you use the 'rosclean' command.");
+				PrintLog.info("");  // Extra empty line
 			}
 			else {
 				PrintLog.info("Done checking log file disk usage. Usage is <1GB.");
+				PrintLog.info("");  // Extra empty line
 			}
 		}
 		catch (Exception e) {

@@ -111,6 +111,11 @@ public class SubstitutionArgs
 			else if (command.compareTo(SubArgs.Optenv.val()) == 0) {
 				resolved = resolveOptenv(argumentStr, arguments);
 			}
+			else {
+				throw new RuntimeException(
+					"Unknown substitution command [" + match.group(0) + "]. " +
+					"Valid commands are ['find', 'env', 'optenv', 'anon', 'arg']");
+			}
 
 			// Substitute the command with the resolved text
 			// Note: the first group is the entire text

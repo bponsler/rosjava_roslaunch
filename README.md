@@ -8,7 +8,6 @@ The following items are known to be not implemented:
     - launching of remote nodes
     - launching of test nodes
     - the --child command line argument
-    - the - command line option
 
 However -- this list is not exhaustive.
 

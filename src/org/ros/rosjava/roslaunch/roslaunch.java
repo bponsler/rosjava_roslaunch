@@ -1,19 +1,26 @@
 package org.ros.rosjava.roslaunch;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.ros.rosjava.roslaunch.launching.ArgManager;
 import org.ros.rosjava.roslaunch.launching.NodeManager;
+import org.ros.rosjava.roslaunch.launching.ParamManager;
 import org.ros.rosjava.roslaunch.launching.RosLaunchRunner;
+import org.ros.rosjava.roslaunch.launching.RosParamManager;
 import org.ros.rosjava.roslaunch.logging.FileLog;
 import org.ros.rosjava.roslaunch.logging.FileLog.FileLogger;
 import org.ros.rosjava.roslaunch.logging.PrintLog;
 import org.ros.rosjava.roslaunch.parsing.ArgTag;
 import org.ros.rosjava.roslaunch.parsing.LaunchFile;
 import org.ros.rosjava.roslaunch.parsing.NodeTag;
+import org.ros.rosjava.roslaunch.parsing.ParamTag;
 import org.ros.rosjava.roslaunch.util.EnvVar;
 import org.ros.rosjava.roslaunch.util.RosUtil;
 import org.ros.rosjava.roslaunch.util.Util;
@@ -127,6 +134,47 @@ public class roslaunch
 	}
 
 	/**
+	 * Dump the set of parameters to the screen in the following format:
+	 *
+	 *     {param1: value1, param2: value2, param3: value3}
+	 *
+	 * @param launchFiles is the list of LaunchFiles
+	 */
+	private static void dumpParams(final List<LaunchFile> launchFiles)
+	{
+		// Grab all rosparams
+		Map<String, String> paramsMap =
+				RosParamManager.getLoadRosParamsMap(launchFiles);
+
+		// Add all standard params to the map
+		List<ParamTag> params = ParamManager.getParams(launchFiles);
+		ParamManager.dumpParameters(params, paramsMap);
+
+		// roslaunch dumps this in the following format:
+		//     {param1: value1, param2: value2, param3: value3}
+		//
+		// Unfortunately, Java Map.toString() returns it in a different format:
+		//     {param1=value1, param2=value2, param3=value3}
+		//
+		// Generate the roslaunch map format:
+		String output = "{";
+		int index = 0;
+		for (String key : paramsMap.keySet())
+		{
+			String value = paramsMap.get(key);
+
+			// Replace carriage returns and newlines to consolidate the output
+			value = value.replace("\r", "\\r").replace("\n", "\\n");
+
+			if (index++ > 0) output += ", ";  // Add comma to separate params
+			output += key + ": " + value;
+		}
+		output += "}";
+
+		PrintLog.info(output);
+	}
+
+	/**
 	 * Cleanup the application before exiting.
 	 */
 	private static void cleanup()
@@ -174,24 +222,6 @@ public class roslaunch
 			return;
 		}
 
-		// Create a UUID which gets used to generate a unique
-		// name of the process log file
-		String uuid = RosUtil.getOrGenerateUuid(parsedArgs);
-		FileLog.configure(uuid);
-
-		FileLogger logger = FileLog.getLogger("roslaunch");
-		logger.info("roslaunch starting with args " + args);
-		logger.info("roslaunch env is " + System.getenv());
-
-        // Don't check disk usage on remote machines
-        if (!parsedArgs.hasChild() && !parsedArgs.hasSkipLogCheck()) {
-            RosUtil.checkLogDiskUsage();
-        }
-
-        if (!parsedArgs.hasChild()) {
-            logger.info("starting in server mode");
-        }
-
 		// Handle the --pid= option
 		if (parsedArgs.hasPid())
 		{
@@ -203,48 +233,15 @@ public class roslaunch
 			}
 			catch (Exception e)
 			{
-				logger.error(ExceptionUtils.getStackTrace(e));
 				printUsage(e.getMessage());
 				return;
 			}
 		}
-
-		// Handle the wait flag
-		if (parsedArgs.hasWait())
+		else if (parsedArgs.hasCore() && !parsedArgs.hasPid())
 		{
-			String masterUri = RosUtil.getMasterUri(parsedArgs);
+			// Handle creating the PID file for the --core option, but
+			// do not write two PID files
 
-			boolean isRunning = RosUtil.isMasterRunning(masterUri);
-			if (!isRunning)
-			{
-				PrintLog.info("roscore/master is not yet running, will wait for it to start");
-
-				// Wait for the master to start running
-				while (!isRunning)
-				{
-					try { Thread.sleep(100); } catch (Exception e) { }
-
-					// Check the master again
-					isRunning = RosUtil.isMasterRunning(masterUri);
-				}
-
-				// If the master still isn't running, then something went wrong
-				if (!isRunning)
-				{
-					PrintLog.error("unknown error waiting for master to start");
-
-					cleanup();
-					return;
-				}
-			}
-
-			PrintLog.info("master has started, initiating launch");
-		}
-
-		// Handle creating the PID file for the --core option, but
-		// do not write two PID files
-		if (parsedArgs.hasCore() && !parsedArgs.hasPid())
-		{
 			// Grab the path to the ROS home directory
 			String rosHome = EnvVar.ROS_HOME.getOpt("./");
 
@@ -271,7 +268,6 @@ public class roslaunch
 			}
 			catch (Exception e)
 			{
-				logger.error(ExceptionUtils.getStackTrace(e));
 				printUsage(e.getMessage());
 				return;
 			}
@@ -279,6 +275,76 @@ public class roslaunch
 
 		// Create a list of parsed launch files
 		List<LaunchFile> launchFiles = new ArrayList<LaunchFile>();
+
+		// Handle the command line option indicating that we need to
+		// parse stdin for launch file data
+		if (parsedArgs.hasReadStdin())
+		{
+			// We do not want to print the loading stdin output when the user
+			// provides an option that will print information (lists of files, list
+			// of nodes, etc)
+			boolean showOutput = !parsedArgs.hasInfoRequest();
+
+			if (showOutput) {
+				PrintLog.info(
+					"Passed '-' as file argument, attempting to read roslaunch XML from stdin");
+			}
+
+			String inputData = "";
+			try
+			{
+				// Create an object to read data from stdin
+				BufferedReader reader = new BufferedReader(
+					new InputStreamReader(System.in));
+
+				// Read all of the input from stdin
+				String input;
+				while ((input = reader.readLine()) != null) {
+					inputData += input + "\n";  // readLine strips newline
+				}
+
+				reader.close();  // Clean up the reader
+			}
+			catch(IOException e) {
+				PrintLog.error("ERROR: while reading stdin: " + e.getMessage());
+				return;
+			}
+
+			//// Attempt to parse the input data
+			if (showOutput)
+			{
+				PrintLog.info("... " + inputData.length() + " bytes read successfully.");
+				PrintLog.info("");  // Extra empty line
+			}
+
+			// Create the launch file
+			LaunchFile launchFile = new LaunchFile();
+
+			// Pass down any command line args to the launch file
+			// to allow them to override launch file args
+			launchFile.addArgMap(parsedArgs.getArgs());
+
+			// Attempt to parse the file
+			if (showOutput) {
+				PrintLog.info("... loading XML");
+			}
+
+			try {
+				launchFile.parseString(inputData);
+			}
+			catch (Exception e)
+			{
+				e.printStackTrace(); // TODO:
+				PrintLog.error(e.getMessage());
+				return;  // Stop on any errors
+			}
+
+			// The launch file was successfully parsed
+			// Only keep launch files that are actually enabled
+			if (launchFile.isEnabled()) {
+				launchFiles.add(launchFile);
+			}
+		}
 
 		// Load all of the files
 		List<String> files = parsedArgs.getLaunchFiles();
@@ -326,7 +392,6 @@ public class roslaunch
 			}
 			catch (Exception e)
 			{
-				logger.error(ExceptionUtils.getStackTrace(e));
 				PrintLog.error("[" + f.getPath() + "]: " + e.getMessage());
 				return;  // Stop on any errors
 			}
@@ -376,6 +441,11 @@ public class roslaunch
 				}
 			}
 
+			// Handle case where there are no args
+			if (requiredArgs.size() == 0 && optionalArgs.size() == 0) {
+				PrintLog.info("No arguments.");
+			}
+
 			return;
 		}
 		else if (parsedArgs.hasNodes())
@@ -388,6 +458,18 @@ public class roslaunch
 		{
 			for (LaunchFile file : launchFiles) {
 				file.printFiles();
+			}
+		}
+		else if (parsedArgs.hasDumpParams())
+		{
+			try
+			{
+				dumpParams(launchFiles);
+			}
+			catch (Exception e)
+			{
+				PrintLog.error("ERROR: launch failed: " + e.getMessage());
+				return;
 			}
 		}
 		else if (parsedArgs.hasFindNode())
@@ -407,7 +489,15 @@ public class roslaunch
 				if (node != null)
 				{
 					// Found the node -- print its filename
-					PrintLog.info(node.getFilename());
+					String filename = node.getFilename();
+					if (filename != null) {
+						PrintLog.info(filename);
+					}
+					else {
+						// If the filename is null then the node was specified by a
+						// launch file passed through stdin
+						PrintLog.info("The node was found in the file provided by stdin");
+					}
 					return;
 				}
 			}
@@ -435,12 +525,14 @@ public class roslaunch
 					String name = node.getResolvedName();
 					if (name.compareTo(nodeName) == 0)
 					{
+						String info = "";
+
 						// Found the node -- print its command line arguments
 						String[] clArgs = NodeManager.getNodeCommandLine(node, true, null);
 						for (String arg : clArgs) {
-							PrintLog.info(arg + " ");
+							info += arg + " ";
 						}
-						PrintLog.info("\n");
+						PrintLog.info(info.trim());
 
 						return;
 					}
@@ -470,6 +562,47 @@ public class roslaunch
 		}
 		else
 		{
+			// Handle the wait flag
+			if (parsedArgs.hasWait())
+			{
+				String masterUri = RosUtil.getMasterUri(parsedArgs);
+
+				boolean isRunning = RosUtil.isMasterRunning(masterUri);
+				if (!isRunning)
+				{
+					PrintLog.info("roscore/master is not yet running, will wait for it to start");
+
+					// Wait for the master to start running
+					while (!isRunning)
+					{
+						try { Thread.sleep(100); } catch (Exception e) { }
+
+						// Check the master again
+						isRunning = RosUtil.isMasterRunning(masterUri);
+					}
+
+					// If the master still isn't running, then something went wrong
+					if (!isRunning)
+					{
+						PrintLog.error("unknown error waiting for master to start");
+
+						cleanup();
+						return;
+					}
+				}
+
+				PrintLog.info("master has started, initiating launch");
+			}
+
+			// Create a UUID which gets used to generate a unique
+			// name of the process log file
+			String uuid = RosUtil.getOrGenerateUuid(parsedArgs);
+			FileLog.configure(uuid);
+
+			FileLogger logger = FileLog.getLogger("roslaunch");
+			logger.info("roslaunch starting with args " + args);
+			logger.info("roslaunch env is " + System.getenv());
+
 			if (!parsedArgs.hasDisableTitle())
 			{
 				String title = "";
@@ -489,14 +622,6 @@ public class roslaunch
 				Util.setTerminalTitle(title);
 			}
 
-			// Print out this warning until remote nodes are launched properly
-			if (parsedArgs.hasLocal())
-			{
-				PrintLog.error(
-					"WARNING: the --local argument is not yet supported as it is " +
-					"currently the default behavior to only run local nodes");
-			}
-
 			// Ensure that no duplicate nodes are found
 			try {
 				NodeManager.checkForDuplicateNodeNames(launchFiles);
@@ -509,49 +634,41 @@ public class roslaunch
 				return;
 			}
 
+	        // Don't check disk usage on remote machines
+	        if (!parsedArgs.hasChild() && !parsedArgs.hasSkipLogCheck()) {
+	            RosUtil.checkLogDiskUsage();
+	        }
+
+	        if (!parsedArgs.hasChild()) {
+	            logger.info("starting in server mode");
+	        }
+
 			// Launch all the nodes!
 			final RosLaunchRunner runner = new RosLaunchRunner(
 					uuid, parsedArgs, launchFiles);
 
-			// Handle the dump params option
-			if (parsedArgs.hasDumpParams())
-			{
-				try {
-					runner.dumpParams();
-				}
-				catch (Exception e)
-				{
-					logger.error(ExceptionUtils.getStackTrace(e));
-					PrintLog.error("ERROR: launch failed: " + e.getMessage());
-					PrintLog.error("The traceback for the exception was written to the log file");
-					return;
-				}
+			// Otherwise, launch the configured nodes
+			try {
+				runner.launch();
 			}
-			else
+			catch (Exception e)
 			{
-				// Otherwise, launch the configured nodes
-				try {
-					runner.launch();
-				}
-				catch (Exception e)
-				{
-					logger.error(ExceptionUtils.getStackTrace(e));
-					PrintLog.error("ERROR: launch failed: " + e.getMessage());
-					PrintLog.error("The traceback for the exception was written to the log file");
-					return;
-				}
-
-				Runtime.getRuntime().addShutdownHook(new Thread()
-				{
-				    @Override
-					public void run() {
-				    	runner.stop();  // Kill the parent
-				    	cleanup();  // Clean up the process
-				    }
-				 });
-
-				runner.spin();
+				logger.error(ExceptionUtils.getStackTrace(e));
+				PrintLog.error("ERROR: launch failed: " + e.getMessage());
+				PrintLog.error("The traceback for the exception was written to the log file");
+				return;
 			}
+
+			Runtime.getRuntime().addShutdownHook(new Thread()
+			{
+			    @Override
+				public void run() {
+                    runner.stop();  // Kill the parent
+                    cleanup();  // Clean up the process
+			    }
+			 });
+
+			runner.spin();
 		}
 
 		// Clean up the entire process before exiting

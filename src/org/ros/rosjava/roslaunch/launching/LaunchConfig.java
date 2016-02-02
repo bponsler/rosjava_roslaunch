@@ -229,43 +229,6 @@ public class LaunchConfig
 	}
 
 	/**
-	 * Dump the set of parameters to the screen in the following format:
-	 *
-	 *     {param1: value1, param2: value2, param3: value3}
-	 */
-	public void dumpParams()
-	{
-		Map<String, String> paramMap = new HashMap<String, String>();
-
-		// Dump all parameters to the map
-		paramMap.putAll(m_loadRosParamsMap);
-		ParamManager.dumpParameters(m_params, paramMap);
-
-		// roslaunch dumps this in the following format:
-		//     {param1: value1, param2: value2, param3: value3}
-		//
-		// Unfortunately, Java Map.toString() returns it in a different format:
-		//     {param1=value1, param2=value2, param3=value3}
-		//
-		// Generate the roslaunch map format:
-		String output = "{";
-		int index = 0;
-		for (String key : paramMap.keySet())
-		{
-			String value = paramMap.get(key);
-
-			// Replace carriage returns and newlines to consolidate the output
-			value = value.replace("\r", "\\r").replace("\n", "\\n");
-
-			if (index++ > 0) output += ", ";  // Add comma to separate params
-			output += key + ": " + value;
-		}
-		output += "}";
-
-		PrintLog.info(output);
-	}
-
-	/**
 	 * Set all of the RosParamTags and ParamTags defined
 	 * in the launch file tree.
 	 *

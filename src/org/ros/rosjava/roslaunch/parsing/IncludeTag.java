@@ -84,7 +84,9 @@ public class IncludeTag extends BaseTag
 
 		// Add the direct parent to the set
 		m_parentFilenames = new HashSet<String>(parentFilenames);
-		m_parentFilenames.add(parentFile.getAbsolutePath());
+		if (parentFile != null) {
+			m_parentFilenames.add(parentFile.getAbsolutePath());
+		}
 
 		m_argTags = new ArrayList<ArgTag>();
 		m_args = new HashMap<String, String>(argMap);

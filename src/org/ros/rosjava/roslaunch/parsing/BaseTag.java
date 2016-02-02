@@ -107,6 +107,11 @@ public class BaseTag
 	 */
 	final public String getFilename()
 	{
-		return m_parentFile.getAbsolutePath();
+		if (m_parentFile != null) {
+			return m_parentFile.getAbsolutePath();
+		}
+		else {
+			return null;
+		}
 	}
 }

@@ -92,14 +92,6 @@ public class RosLaunchRunner
 	}
 
 	/**
-	 * Dump the defined rosparams and params to the screen.
-	 */
-	public void dumpParams()
-	{
-		m_config.dumpParams();
-	}
-
-	/**
 	 * Launch all of the nodes defined in the launch tree.
 	 *
 	 * @throws Exception if the launch fails
@@ -117,9 +109,13 @@ public class RosLaunchRunner
 			// Now set all the parameters
 			m_config.setParameters();
 
-			// Launch all remote nodes
-			List<RosProcessIF> remoteProcesses = m_config.launchRemoteNodes();
-			m_processMonitor.addProcesses(remoteProcesses);
+			// Launch all remote nodes -- unless we are doing a local
+			// only launch
+			if (!m_parsedArgs.hasLocal())
+			{
+				List<RosProcessIF> remoteProcesses = m_config.launchRemoteNodes();
+				m_processMonitor.addProcesses(remoteProcesses);
+			}
 
 			// Then start all the non-core nodes
 			List<RosProcessIF> localProcesses = m_config.launchLocalNodes();

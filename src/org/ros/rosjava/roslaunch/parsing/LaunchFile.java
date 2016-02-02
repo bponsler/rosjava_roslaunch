@@ -1,6 +1,8 @@
 package org.ros.rosjava.roslaunch.parsing;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -16,6 +18,9 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import org.xml.sax.ErrorHandler;
+import org.xml.sax.SAXException;
+import org.xml.sax.SAXParseException;
 
 /**
  * The LaunchFile class
@@ -78,6 +83,29 @@ public class LaunchFile
 		Attribute.Deprecated,
 		Attribute.Filename,
 	};
+
+	public LaunchFile()
+	{
+		m_file = null;
+		m_filename = null;
+		m_ns = "";
+
+		m_enabled = true;
+		m_deprecated = "";  // Not deprecated
+
+		m_args = new ArrayList<ArgTag>();
+		m_argMap = new HashMap<String, String>();
+		m_env = new HashMap<String, String>();
+		m_includes = new ArrayList<IncludeTag>();
+		m_nodes = new ArrayList<NodeTag>();
+		m_groups = new ArrayList<GroupTag>();
+		m_remaps = new HashMap<String, String>();
+		m_params = new ArrayList<ParamTag>();
+		m_rosParams = new ArrayList<RosParamTag>();
+		m_machines = new ArrayList<MachineTag>();
+		m_tests = new ArrayList<TestTag>();
+		m_parentFilenames = new HashSet<String>();
+	}
 
 	/**
 	 * Constructor
@@ -399,11 +427,91 @@ public class LaunchFile
 		{
 			DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
 			DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+
+			// Keep the document builder from printing error messages
+			dBuilder.setErrorHandler(new ErrorHandler() {
+			    @Override
+			    public void fatalError(SAXParseException exception) throws SAXException {
+			        // Do not print fatal errors
+			    }
+
+				@Override
+				public void error(SAXParseException arg0) throws SAXException {
+					// Do not log errors
+				}
+
+				@Override
+				public void warning(SAXParseException arg0) throws SAXException {
+					// Do not log warning
+				}
+			});
+
 			doc = dBuilder.parse(m_file);
 		}
 		catch (Exception e)
 		{
-			throw new RuntimeException("ERROR: failed to parse launch file: " + m_filename);
+			throw new RuntimeException(
+				"ERROR: failed to parse launch file: [" + m_filename + "]");
+		}
+
+		if (doc != null)
+		{
+			Element launch = doc.getDocumentElement();
+			if (launch.getNodeName().compareTo(Tag.Launch.val()) != 0)
+			{
+				throw new RuntimeException(
+						"Invalid roslaunch XML syntax: no root <" + Tag.Launch.val() + "> tag");
+			}
+
+			// Parse all attributes
+			parseAttributes(launch);
+
+			// Parse all children -- only when enabled
+			if (isEnabled()) {
+				parseChildren(launch);
+			}
+		}
+	}
+
+	/**
+	 * Parse the given XML String.
+	 *
+	 * @param data the XML data String
+	 */
+	public void parseString(final String data)
+	{
+		Document doc;
+		try
+		{
+			DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+			DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+
+			// Keep the document builder from printing error messages
+			dBuilder.setErrorHandler(new ErrorHandler() {
+			    @Override
+			    public void fatalError(SAXParseException exception) throws SAXException {
+			        // Do not print fatal errors
+			    }
+
+				@Override
+				public void error(SAXParseException arg0) throws SAXException {
+					// Do not log errors
+				}
+
+				@Override
+				public void warning(SAXParseException arg0) throws SAXException {
+					// Do not log warning
+				}
+			});
+
+			InputStream is = new ByteArrayInputStream(data.getBytes());
+			doc = dBuilder.parse(is);
+			is.close();
+		}
+		catch (Exception e)
+		{
+			throw new RuntimeException(
+				"ERROR: failed to parse launch file from string: " + e.getMessage());
 		}
 
 		if (doc != null)

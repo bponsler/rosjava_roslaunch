@@ -371,7 +371,8 @@ public class NodeManager
 
 		// If the screen argument is active, then the output of all
 		// nodes is logged to the screen
-		if (parsedArgs.hasScreen()) {
+		// Also print streams for all core nodes
+		if (parsedArgs.hasScreen() || isCore) {
 			printStreams = true;
 		}
 
