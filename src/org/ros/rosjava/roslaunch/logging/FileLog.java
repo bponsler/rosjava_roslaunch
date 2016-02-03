@@ -171,7 +171,7 @@ public class FileLog
 			m_writer = new PrintWriter(fw);
 		}
 		catch (IOException e) {
-			// Do not print errors
+			PrintLog.error("ERROR: opening log file: " + e.getMessage());
 		}
 	}
 
@@ -191,8 +191,6 @@ public class FileLog
 
 		// Create the new log file
 		m_instance = new FileLog(uuid, filename, false);  // overwrite
-		PrintLog.info("... logging to " + m_instance.getFilename());
-
 		return m_instance.isOpen();
 	}
 
@@ -268,7 +266,7 @@ public class FileLog
 		if (m_instance != null && m_instance.isOpen())
 		{
 			String prefix = getPrefix(name, severity);
-			m_instance.m_writer.write(prefix + ": " + message + "\n");
+			m_instance.write(prefix + ": " + message);
 		}
 	}
 
@@ -339,9 +337,14 @@ public class FileLog
 	 *
 	 * @return the filename
 	 */
-	public String getFilename()
+	public static String getFilename()
 	{
-		return m_filename;
+		if (m_instance != null) {
+			return m_instance.m_filename;
+		}
+		else {
+			return null;
+		}
 	}
 
 	/**
@@ -351,8 +354,10 @@ public class FileLog
 	 */
 	public void write(final String message)
 	{
-		if (m_writer != null) {
-			m_writer.write(message);
+		if (m_writer != null)
+		{
+			m_writer.write(message + "\n");
+			m_writer.flush();
 		}
 	}
 
@@ -363,6 +368,7 @@ public class FileLog
 	{
 		if (m_writer != null)
 		{
+			m_writer.flush();
 			m_writer.close();
 			m_writer = null;
 			m_filename = "";

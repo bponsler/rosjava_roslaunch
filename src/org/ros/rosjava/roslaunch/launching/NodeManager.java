@@ -2,6 +2,7 @@ package org.ros.rosjava.roslaunch.launching;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.ProcessBuilder.Redirect;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -15,6 +16,7 @@ import org.ros.rosjava.roslaunch.parsing.LaunchFile;
 import org.ros.rosjava.roslaunch.parsing.NodeTag;
 import org.ros.rosjava.roslaunch.util.EnvVar;
 import org.ros.rosjava.roslaunch.util.RosUtil;
+import org.ros.rosjava.roslaunch.util.Util;
 
 /**
  * The NodeManager class
@@ -362,19 +364,17 @@ public class NodeManager
 		// Handle the cwd attribute for the node
 		File workingDir = node.getCwd();
 
-		// Launch the node with its environment and the working directory
-		// NOTE: it is fine if workingDir, or envp, are null here it just
-		//       will launch the process with whatever the default values are
-		Process proc = Runtime.getRuntime().exec(command, envp, workingDir);
-
-		boolean printStreams = node.isScreenOutput();
-
 		// If the screen argument is active, then the output of all
 		// nodes is logged to the screen
 		// Also print streams for all core nodes
+		boolean logStreams = node.isLogOutput();
 		if (parsedArgs.hasScreen() || isCore) {
-			printStreams = true;
+			logStreams = false;
 		}
+
+		// Launch the node with its environment and the working directory
+		Process proc = launchNodeProcess(
+				processName, uuid, command, envp, workingDir, logStreams);
 
 		RosLocalProcess rosProc = new RosLocalProcess(
 				processName,
@@ -383,7 +383,7 @@ public class NodeManager
 				uuid,
 				isCore,
 				node.isRequired(),
-				printStreams);
+				logStreams);
 
 		// Set the environment and working directory that
 		// were used to run the process
@@ -391,6 +391,108 @@ public class NodeManager
 		rosProc.setWorkingDir(workingDir);
 
 		return rosProc;
+	}
+
+	/**
+	 * Launch a node process.
+	 *
+	 * @param processName the name of the process
+	 * @param uuid the UUID for the process
+	 * @param command the command to execute
+	 * @param envp the environment variables
+	 * @param workingDir the working directory
+	 * @param isLogOutput true if the process should log its output
+	 * @return the started Process
+	 * @throws IOException if starting the Process fails
+	 */
+	public static Process launchNodeProcess(
+			final String processName,
+			final String uuid,
+			final String[] command,
+			final String[] envp,
+			final File workingDir,
+			final boolean isLogOutput) throws IOException
+	{
+		// Linux configures processes to flush stdout on a per line basis
+		// whenever the process is connected to a terminal due to the
+		// assumption that the user wants to see immediate output. When
+		// the process is connected to a file (e.g., command > /tmp/file.txt)
+		// stdout is configured to be buffered with a 4-kiB buffer. In order
+		// to receive output from a Process Java uses files which causes the
+		// stdout to be buffered (note that stderr is always flushed on a
+		// per line basis). This means that the output of any process that
+		// writes to stdout will not be received immediately unless the
+		// process explicity:
+		//     - flushes stdout
+		//     - has disabled buffering (e.g., setbuf(stdout, NULL))
+		//
+		// This is not acceptable for the roslaunch process as output
+		// from nodes needs to be visible to the user immediately. The
+		// workaround is to use either the 'unbuffer' or the 'stdbuf'
+		// programs which both effectively do the same thing and can
+		// be used as follows:
+		//     - unbuffer my_command cmd_args
+		//     - stdbuf -oL my_command cmd_args   (output will be line buffered)
+		//     - stdbuf -o0 my_command cmd_args   (output will be unbuffered)
+		//
+		// These applications can be installed by doing:
+		//     sudo apt-get install expect-dev
+		//
+		// Once the application is passed through one of these options its
+		// output to stdout will be received as configured.
+		List<String> unbufferedCommand = new ArrayList<String>();
+		unbufferedCommand.add("stdbuf");
+		unbufferedCommand.add("-oL");
+		for (String arg : command) {
+			unbufferedCommand.add(arg);
+		}
+
+		// Convert the list of command args back to an array
+		String[] fullCommand = Util.listToArray(unbufferedCommand);
+
+		ProcessBuilder builder = new ProcessBuilder(fullCommand);
+
+		// Set the working directory for the process
+		builder.directory(workingDir);
+
+		// Update the environment for the process
+		if (envp != null)
+		{
+			Map<String, String> bEnv = builder.environment();
+			for (String envVar : envp)
+			{
+				// Each envVar is of the form: VAR=VAL
+				int index = envVar.indexOf("=");
+				if (index != -1)
+				{
+					String name = envVar.substring(0, index);
+					String value = envVar.substring(index + 1);
+					bEnv.put(name, value);
+				}
+			}
+		}
+
+		// Configure the output of the process either to log to a file,
+		// or log directly to the screen
+		if (isLogOutput)
+		{
+			// Create names for both stdout and stderr log files
+			String logName = RosUtil.getProcessLogFile(processName, uuid);
+			String stdoutLogFile = logName.replace(".log", "-stdout.log");
+			String stderrLogFile = logName.replace(".log", "-stderr.log");
+
+			builder.redirectOutput(new File(stdoutLogFile));
+			builder.redirectError(new File(stderrLogFile));
+		}
+		else
+		{
+			// Inherit allows the output of this process to be displayed
+			// directly in the terminal for the roslaunch process
+			builder.redirectError(Redirect.INHERIT);
+			builder.redirectOutput(Redirect.INHERIT);
+		}
+
+		return builder.start();
 	}
 
 	/**

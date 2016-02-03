@@ -222,6 +222,26 @@ public class roslaunch
 			return;
 		}
 
+
+		// Create a UUID which gets used to generate a unique
+		// name of the process log file
+		String uuid = RosUtil.getOrGenerateUuid(parsedArgs);
+		FileLog.configure(uuid);
+		FileLogger logger = FileLog.getLogger("roslaunch");
+
+		if (!parsedArgs.hasInfoRequest())
+		{
+			PrintLog.info("... logging to " + FileLog.getFilename());
+
+			logger.info("roslaunch starting with args " + args);
+			logger.info("roslaunch env is " + System.getenv());
+
+	        // Don't check disk usage on remote machines
+	        if (!parsedArgs.hasChild() && !parsedArgs.hasSkipLogCheck()) {
+	            RosUtil.checkLogDiskUsage();
+	        }
+		}
+
 		// Handle the --pid= option
 		if (parsedArgs.hasPid())
 		{
@@ -234,6 +254,8 @@ public class roslaunch
 			catch (Exception e)
 			{
 				printUsage(e.getMessage());
+				logger.error(ExceptionUtils.getStackTrace(e));
+				PrintLog.error("The traceback for the exception was written to the log file");
 				return;
 			}
 		}
@@ -269,6 +291,8 @@ public class roslaunch
 			catch (Exception e)
 			{
 				printUsage(e.getMessage());
+				logger.error(ExceptionUtils.getStackTrace(e));
+				PrintLog.error("The traceback for the exception was written to the log file");
 				return;
 			}
 		}
@@ -334,8 +358,9 @@ public class roslaunch
 			}
 			catch (Exception e)
 			{
-				e.printStackTrace(); // TODO:
 				PrintLog.error(e.getMessage());
+				logger.error(ExceptionUtils.getStackTrace(e));
+				PrintLog.error("The traceback for the exception was written to the log file");
 				return;  // Stop on any errors
 			}
 
@@ -462,13 +487,14 @@ public class roslaunch
 		}
 		else if (parsedArgs.hasDumpParams())
 		{
-			try
-			{
+			try {
 				dumpParams(launchFiles);
 			}
 			catch (Exception e)
 			{
-				PrintLog.error("ERROR: launch failed: " + e.getMessage());
+				PrintLog.error("ERROR: dump params failed: " + e.getMessage());
+				logger.error(ExceptionUtils.getStackTrace(e));
+				PrintLog.error("The traceback for the exception was written to the log file");
 				return;
 			}
 		}
@@ -594,15 +620,6 @@ public class roslaunch
 				PrintLog.info("master has started, initiating launch");
 			}
 
-			// Create a UUID which gets used to generate a unique
-			// name of the process log file
-			String uuid = RosUtil.getOrGenerateUuid(parsedArgs);
-			FileLog.configure(uuid);
-
-			FileLogger logger = FileLog.getLogger("roslaunch");
-			logger.info("roslaunch starting with args " + args);
-			logger.info("roslaunch env is " + System.getenv());
-
 			if (!parsedArgs.hasDisableTitle())
 			{
 				String title = "";
@@ -630,16 +647,12 @@ public class roslaunch
 			{
 				logger.error(ExceptionUtils.getStackTrace(e));
 				PrintLog.error(e.getMessage());
+				logger.error(ExceptionUtils.getStackTrace(e));
 				PrintLog.error("The traceback for the exception was written to the log file");
 				return;
 			}
 
-	        // Don't check disk usage on remote machines
-	        if (!parsedArgs.hasChild() && !parsedArgs.hasSkipLogCheck()) {
-	            RosUtil.checkLogDiskUsage();
-	        }
-
-	        if (!parsedArgs.hasChild()) {
+			if (!parsedArgs.hasChild()) {
 	            logger.info("starting in server mode");
 	        }
 
@@ -653,8 +666,8 @@ public class roslaunch
 			}
 			catch (Exception e)
 			{
-				logger.error(ExceptionUtils.getStackTrace(e));
 				PrintLog.error("ERROR: launch failed: " + e.getMessage());
+				logger.error(ExceptionUtils.getStackTrace(e));
 				PrintLog.error("The traceback for the exception was written to the log file");
 				return;
 			}

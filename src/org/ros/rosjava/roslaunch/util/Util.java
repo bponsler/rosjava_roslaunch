@@ -301,4 +301,18 @@ public class Util
 
         return size.get();
     }
+
+	/**
+	 * Convert a List of Strings into an array of string.
+	 *
+	 * @param list the List of String
+	 * @return the array of Strings
+	 */
+	public static String[] listToArray(final List<String> list)
+	{
+		String[] array = new String[list.size()];
+		list.toArray(array);
+
+		return array;
+	}
 }

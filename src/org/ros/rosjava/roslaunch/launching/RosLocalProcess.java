@@ -4,16 +4,14 @@ import java.io.File;
 
 import org.ros.rosjava.roslaunch.logging.PrintLog;
 import org.ros.rosjava.roslaunch.util.RosUtil;
-import org.ros.rosjava.roslaunch.util.StreamPrinter;
 import org.ros.rosjava.roslaunch.util.Util;
 
 /**
  * The RosProcess class
  *
- * This class encapsulates a named running process and provides the
- * ability to print the stdout and stderr streams of the process
- * to the console. This class implements the RosProcessIF to
- * monitor a process running on a local machine.
+ * This class encapsulates a named running process. This class
+ * implements the RosProcessIF to monitor a process running
+ * on a local machine.
  */
 public class RosLocalProcess implements RosProcessIF
 {
@@ -24,6 +22,8 @@ public class RosLocalProcess implements RosProcessIF
 	/** The UUID for the launch process. */
 	private String m_uuid;
 
+	/** The command args used to run this process. */
+	private String[] m_commandArgs;
 	/** The command used to run this process. */
 	private String m_command;
 	/** The environment used to run this process. */
@@ -31,8 +31,8 @@ public class RosLocalProcess implements RosProcessIF
 	/** The working directory used to run this process. */
 	private File m_workingDir;
 
-	/** True if streams are being printed for this process. */
-	private boolean m_printStreams;
+	/** True if streams are being logged to a file for this process. */
+	private boolean m_logStreams;
 
 	/** True if this is a core process, false otherwise. */
 	private boolean m_isCore;
@@ -42,11 +42,6 @@ public class RosLocalProcess implements RosProcessIF
 	private boolean m_respawn;
 	/** The delay (in seconds) to wait before respawning this process. */
 	private float m_respawnDelaySeconds;
-
-	/** The stderr StreamPrinter. */
-	private StreamPrinter m_stderrPrinter;
-	/** The stdout StreamPrinter. */
-	private StreamPrinter m_stdoutPrinter;
 
 	/**
 	 * Constructor
@@ -58,8 +53,8 @@ public class RosLocalProcess implements RosProcessIF
 	 * @param command is the array of arguments used to execute this process
 	 * @param uuid is the UUID for the launch process
 	 * @param required true if this is a required process, false otherwise
-	 * @param printStreams true if the stdout and stderr
-	 *        streams should be printed to the console
+	 * @param logStreams true if the stdout and stderr
+	 *        streams are being logged to a file
 	 */
 	public RosLocalProcess(
 			final String name,
@@ -68,14 +63,14 @@ public class RosLocalProcess implements RosProcessIF
 			final String uuid,
 			final boolean isCore,
 			final boolean required,
-			final boolean printStreams)
+			final boolean logStreams)
 	{
 		m_name = name;
 		m_process = process;
 		m_uuid = uuid;
 		m_isCore = isCore;
 		m_required = required;
-		m_printStreams = printStreams;
+		m_logStreams = logStreams;
 
 		// Remove the starting global namespace slash from all
 		// process names, if it exists
@@ -94,13 +89,11 @@ public class RosLocalProcess implements RosProcessIF
 			if (index++ > 0) m_command += " ";
 			m_command += arg;
 		}
+		m_commandArgs = command;
 
 		// No environment, or working directory by default
 		m_envp = null;
 		m_workingDir = null;
-
-		// Print stdout, and stderr for this process to the console
-		setupPrintStreams(false);  // do not append initially
 	}
 
 	/**
@@ -238,7 +231,7 @@ public class RosLocalProcess implements RosProcessIF
 			}
 
 			// Add print about the log file, if one is in use
-			if (!m_printStreams)
+			if (m_logStreams)
 			{
 				String logFile = RosUtil.getProcessLogFile(m_name, m_uuid);
 				output += "\nlog file: " + logFile;
@@ -287,12 +280,12 @@ public class RosLocalProcess implements RosProcessIF
 		replaceOldLogArgument();
 
 		m_process.destroy();
-		m_process = Runtime.getRuntime().exec(m_command, m_envp, m_workingDir);
+
+		// Restart the process
+		m_process = NodeManager.launchNodeProcess(
+				m_name, m_uuid, m_commandArgs, m_envp, m_workingDir, m_logStreams);
 
 		printStartMessage();
-
-		// Set up the streams for this process
-		setupPrintStreams(true);  // append when respawning
 	}
 
 	/**
@@ -302,20 +295,6 @@ public class RosLocalProcess implements RosProcessIF
 	public void destroy()
 	{
 		m_process.destroy();
-
-		if (m_stderrPrinter != null)
-		{
-			m_stderrPrinter.stopPrinting();
-			m_stderrPrinter.interrupt();
-			m_stderrPrinter = null;
-		}
-
-		if (m_stdoutPrinter != null)
-		{
-			m_stdoutPrinter.stopPrinting();
-			m_stdoutPrinter.interrupt();
-			m_stdoutPrinter = null;
-		}
 	}
 
 	@Override
@@ -341,35 +320,6 @@ public class RosLocalProcess implements RosProcessIF
 	public void waitFor() throws InterruptedException
 	{
 		m_process.waitFor();
-	}
-
-	/**
-	 * Set up the print streams for this process.
-	 *
-	 * @param append true to append to the log files, false otherwise
-	 */
-	private void setupPrintStreams(final boolean append)
-	{
-		if (m_printStreams)
-		{
-			m_stderrPrinter = new StreamPrinter(m_process.getErrorStream());
-			m_stdoutPrinter = new StreamPrinter(m_process.getInputStream());
-		}
-		else
-		{
-			// Create names for both stdout and stderr log files
-			String logName = RosUtil.getProcessLogFile(m_name, m_uuid);
-			String stdoutLogFile = logName.replace(".log", "-stdout.log");
-			String stderrLogFile = logName.replace(".log", "-stderr.log");
-
-			m_stderrPrinter = new StreamPrinter(
-				m_process.getErrorStream(), m_uuid, stdoutLogFile, append);
-			m_stdoutPrinter = new StreamPrinter(
-				m_process.getErrorStream(), m_uuid, stderrLogFile, append);
-		}
-
-		m_stderrPrinter.start();
-		m_stdoutPrinter.start();
 	}
 
 	/**

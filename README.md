@@ -5,7 +5,7 @@ NOTE: this project is very much in its early stages and there are many pieces of
 
 The following items are known to be not implemented:
 
-    - launching of remote nodes
+    - full support of launching of remote nodes
     - launching of test nodes
     - the --child command line argument
 
@@ -21,3 +21,7 @@ This project currently requires the following libraries:
     download the jar from http://repo1.maven.org/maven2/org/yaml/snakeyaml/1.16/
   - JSch
     download the jar from http://www.jcraft.com/jsch/
+
+Additionally you will need to install the following packages:
+
+  - sudo apt-get install expect-dev

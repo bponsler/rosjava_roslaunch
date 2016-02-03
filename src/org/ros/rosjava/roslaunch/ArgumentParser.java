@@ -5,8 +5,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-// TODO: does not support the - option to read from stdin
-
 /**
  * The ArgumentParser class is responsible for parsing
  * command line arguments for the roslaunch application.

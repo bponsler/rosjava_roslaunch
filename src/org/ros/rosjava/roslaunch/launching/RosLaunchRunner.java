@@ -160,8 +160,6 @@ public class RosLaunchRunner
 	 */
 	private void setup()
 	{
-		// TODO: handle remote runner
-
 		// Start up the core: master + core nodes defined in core.xml
 		if (!m_config.isMasterRunning()) {
 			this.launchMaster();  // Only if not already running
