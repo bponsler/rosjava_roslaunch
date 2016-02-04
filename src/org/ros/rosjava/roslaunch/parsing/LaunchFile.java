@@ -87,7 +87,7 @@ public class LaunchFile
 	public LaunchFile()
 	{
 		m_file = null;
-		m_filename = null;
+		m_filename = "unknown";  // Unknown file
 		m_ns = "";
 
 		m_enabled = true;
